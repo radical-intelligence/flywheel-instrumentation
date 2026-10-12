@@ -1293,13 +1293,13 @@ export const contractCases: ContractCase[] = [
         init({ schemas: { agent: { wide: wideSchema(1100) }, tool: { a: wideSchema(10) } } }))
       const report = fw.selfCheck()
       assert.equal(report.ok, true)
-      assert.deepEqual(report.attributeCounts, { turn: 3 + 1100 + 20, nodes: { 'agent.wide': 1100, 'tool.a': 20 } })
+      assert.deepEqual(report.attributeCounts, { turn: 3 + 1100 + 10, nodes: { 'agent.wide': 1100, 'tool.a': 10 } })
       assert.deepEqual(report.issues.map(i => [i.level, i.code]), [
         ['warning', 'attribute_count_limit'],
         ['warning', 'attribute_count_limit'],
       ])
       assert.match(report.issues[0].message, /agent\.wide declares 1100 .* limit of 1024/)
-      assert.match(report.issues[1].message, /turn can write 1123 .* limit of 1024/)
+      assert.match(report.issues[1].message, /turn can write 1113 .* limit of 1024/)
       assert.equal(warnings.length, 2)
     }),
   },

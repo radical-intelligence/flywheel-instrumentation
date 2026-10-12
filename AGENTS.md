@@ -190,7 +190,7 @@ Rule: each evaluator declares the fields it `requires` and the values it `expect
 
 Provides: `manifest()` returns an `InstrumentationManifest`: every attribute name the product can write on a turn span, sorted by name (`src/manifest.ts`, types in `src/types.ts`). It lists:
 
-- For each key of each schema in `init({ schemas })`: `app.<type>.<name>.<key>`, its `.truncated` flag for a string or a string array, the old name of a rename with `until`, and the legacy name of a tool or model key. A rename or legacy name has `aliasOf`, the name it repeats.
+- For each key of each schema in `init({ schemas })`: `app.<type>.<name>.<key>`, its `.truncated` flag for a string or a string array, and the old name of a rename with `until`. The old name has `aliasOf`, the name it repeats.
 - The core names: `enduser.id`, `session.id` and `flywheel.attribute_error`.
 - The names that other modules add with `registerAttributes(source, attributes)`, from the `./manifest` subpath. Each key is a full attribute name with an `AttributeSpec`. A second call with the same source replaces the first.
 
@@ -205,7 +205,8 @@ Usage:
 
 Tests:
 
-- `manifest() lists each declared name with its type, the truncated flags, renames, legacy names and the core names`
+- `manifest() lists each declared name with its type, the truncated flags, renames and the core names`
+- `manifest() lists no legacy app.<name>.<key> or app.<key> names for tool and model keys`
 - `every name a schema handle writes is in the manifest`
 - `registerAttributes() adds a module's names to every manifest, and a second call replaces them`
 - `the noop instance manifest() lists no names`

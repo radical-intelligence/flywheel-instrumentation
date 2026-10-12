@@ -1,4 +1,3 @@
-import { legacyName } from './legacy.js'
 import { schemaMaxLength } from './schema.js'
 import { PACKAGE_NAME, VERSION } from './version.js'
 import type { AttributeSpec, InstrumentationManifest, ManifestAttribute, NodeSchemas, NodeType } from './types.js'
@@ -45,8 +44,6 @@ function nodeEntries(type: NodeType, name: string, key: string, spec: AttributeS
     out.push(old)
     if (cuts) out.push({ name: `${old.name}.truncated`, type: 'boolean', source, aliasOf: `${canonical.name}.truncated`, until })
   }
-  const legacy = legacyName(type, name, key)
-  if (legacy !== undefined) out.push({ ...entry(legacy, spec, source, maxLength), aliasOf: canonical.name })
   return out
 }
 

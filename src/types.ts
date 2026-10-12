@@ -87,7 +87,7 @@ export interface ManifestAttribute {
   values?: string[]
   /** The length limit of a string, or of each item of a string array. */
   maxLength?: number
-  /** Set on a legacy or renamed name: the attribute that this name repeats. */
+  /** Set on a renamed name: the attribute that this name repeats. */
   aliasOf?: string
   /** Set on a renamed name: the date (YYYY-MM-DD) its writes stop. */
   until?: string
