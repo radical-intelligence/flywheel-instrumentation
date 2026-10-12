@@ -19,9 +19,16 @@
     "./ai-sdk": {
       "types": "./dist/ai-sdk.d.ts",
       "import": "./dist/ai-sdk.js"
+    },
+    "./manifest": {
+      "types": "./dist/manifest.d.ts",
+      "import": "./dist/manifest.js"
     }
   },
   "types": "./dist/index.d.ts",
+  "bin": {
+    "flywheel-instrumentation-manifest": "./dist/cli.js"
+  },
   "files": [
     "dist",
     "AGENTS.md"
