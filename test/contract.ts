@@ -10,6 +10,10 @@
  * The order matters for the first case. `init()` replaces a module-level
  * instance that nothing resets, so the case that reads `flywheel()` before
  * any `init()` must run first, in a fresh module instance.
+ *
+ * The order also matters for the second case. Only the first `init()` that
+ * finds a tracer provider emits the start-up span, so the case that reads
+ * that span must run before any other case calls `init()` inside `withSdk`.
  */
 import assert from 'node:assert/strict'
 import { trace, SpanKind, TraceFlags } from '@opentelemetry/api'
@@ -20,6 +24,13 @@ import type { NodeSchema, TurnRef } from '../src/index.js'
 import { recordStreamPart } from '../src/ai-sdk.js'
 import { requestTimeline, startTimeline, timedMiddleware } from '../src/express.js'
 import type { NextFunction, Request, RequestHandler, Response } from 'express'
+import { buildManifest, registerAttributes } from '../src/manifest.js'
+import { writeManifestFile } from '../src/manifestFile.js'
+import { VERSION } from '../src/version.js'
+import { logs } from '@opentelemetry/api-logs'
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { withSdk } from './sdk.js'
 import type { Sdk } from './sdk.js'
 
@@ -61,6 +72,26 @@ function fakeClock(start = 1000) {
   return { now: () => t, advance: (ms: number) => { t += ms } }
 }
 
+/** Run `fn` and collect what it writes with console.error and console.warn. */
+async function captureConsole<T>(fn: () => T | Promise<T>): Promise<{ result: T; errors: string[]; warnings: string[] }> {
+  const errors: string[] = []
+  const warnings: string[] = []
+  const { error, warn } = console
+  console.error = (...args: unknown[]) => { errors.push(args.join(' ')) }
+  console.warn = (...args: unknown[]) => { warnings.push(args.join(' ')) }
+  try {
+    return { result: await fn(), errors, warnings }
+  } finally {
+    console.error = error
+    console.warn = warn
+  }
+}
+
+/** A schema with `n` count keys, named k0 to k<n-1>. */
+const wideSchema = (n: number): NodeSchema => ({
+  attributes: Object.fromEntries(Array.from({ length: n }, (_, i) => [`k${i}`, { type: 'count' as const }])),
+})
+
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
 /** The part of an Express response that the middleware reads. */
@@ -72,6 +103,35 @@ export const contractCases: ContractCase[] = [
   sync('flywheel() returns the noop instance before init()', () => {
     assert.equal(flywheel(), noopInstance)
   }),
+
+  // Must stay second. See the header.
+  {
+    name: 'the first init() with a tracer provider emits one flywheel.startup span, at the root, with the version and schema counts',
+    run: () => withSdk(async (sdk) => {
+      let report: pkg.SelfCheckReport | undefined
+      await sdk.inSpan('request', () => {
+        init({ schemas: { tool: { search: SEARCH_SCHEMA } } })
+        report = init().selfCheck()
+      })
+      const startups = sdk.spans().filter(s => s.name === 'flywheel.startup')
+      assert.equal(startups.length, 2)
+      const [first] = startups
+      assert.equal(first.kind, SpanKind.INTERNAL)
+      assert.equal(first.parentSpanContext, undefined)
+      assert.equal(first.instrumentationScope.name, 'flywheel')
+      assert.deepEqual(first.attributes, {
+        'flywheel.version': VERSION,
+        'flywheel.schema.node_count': 1,
+        'flywheel.schema.attribute_count': 3 + 10,
+        'flywheel.attribute_count_limit': 1024,
+        'flywheel.self_check.ok': true,
+        'flywheel.self_check.issues': [],
+      })
+      assert.deepEqual(sdk.span('request').attributes, {})
+      assert.equal(report?.startupSpan?.traceId, startups[1].spanContext().traceId)
+      assert.equal(report?.startupSpan?.sampled, true)
+    }),
+  },
 
   sync('the package exports init, flywheel and noopInstance', () => {
     assert.deepEqual(Object.keys(pkg).sort(), ['flywheel', 'init', 'noopInstance'])
@@ -1154,4 +1214,251 @@ export const contractCases: ContractCase[] = [
       assert.equal(sdk.logRecords().length, 0)
     }),
   },
+
+  {
+    name: 'a later init() emits no startup span, and selfCheck() emits one on each call',
+    run: () => withSdk(async (sdk) => {
+      const fw = init()
+      assert.equal(sdk.spans().length, 0)
+      fw.selfCheck()
+      fw.selfCheck()
+      assert.deepEqual(sdk.spans().map(s => s.name), ['flywheel.startup', 'flywheel.startup'])
+    }),
+  },
+
+  {
+    name: 'with a tracer and a logger provider, selfCheck() reports ok with no issues',
+    run: () => withSdk(async () => {
+      const report = init({ requireLoggerProvider: true }).selfCheck()
+      assert.equal(report.ok, true)
+      assert.equal(report.tracerProvider, true)
+      assert.equal(report.loggerProvider, true)
+      assert.deepEqual(report.attributeCountLimit, { value: 1024, source: 'sdk' })
+      assert.equal(report.valueSizeLimit, 8192)
+      assert.deepEqual(report.issues, [])
+    }),
+  },
+
+  {
+    name: 'with no tracer provider, selfCheck() fails with no_tracer_provider and init() writes it to the console',
+    run: async () => {
+      const { result: fw, errors } = await captureConsole(() => init())
+      assert.notEqual(fw, noopInstance)
+      assert.equal(flywheel(), fw)
+      assert.equal(errors.length, 1)
+      assert.match(errors[0], /^flywheel self-check: no_tracer_provider: /)
+      const report = fw.selfCheck()
+      assert.equal(report.ok, false)
+      assert.equal(report.tracerProvider, false)
+      assert.equal(report.startupSpan, undefined)
+      assert.deepEqual(report.issues.map(i => [i.level, i.code]), [['error', 'no_tracer_provider']])
+    },
+  },
+
+  {
+    name: 'in strict mode, init() throws when the self-check fails, and flywheel() keeps the previous instance',
+    run: async () => {
+      const before = flywheel()
+      await captureConsole(() => {
+        assert.throws(() => init({ strict: true }), /self-check failed: no_tracer_provider/)
+      })
+      assert.equal(flywheel(), before)
+    },
+  },
+
+  {
+    name: 'with requireLoggerProvider or azureCustomEvents, selfCheck() fails with no logger provider',
+    run: () => withSdk(async () => {
+      logs.disable()
+      const { result, errors } = await captureConsole(() => [
+        init({ requireLoggerProvider: true }).selfCheck(),
+        init({ azureCustomEvents: true }).selfCheck(),
+        init().selfCheck(),
+      ])
+      const [required, customEvents, optional] = result
+      assert.equal(required.ok, false)
+      assert.equal(required.loggerProvider, false)
+      assert.deepEqual(required.issues.map(i => i.code), ['no_logger_provider'])
+      assert.deepEqual(customEvents.issues.map(i => i.code), ['no_logger_provider'])
+      assert.equal(optional.ok, true)
+      assert.deepEqual(optional.issues, [])
+      assert.equal(errors.length, 2)
+    }),
+  },
+
+  {
+    name: 'selfCheck() warns when a node or the turn declares more names than the SDK attribute count limit, and stays ok',
+    run: () => withSdk(async () => {
+      const { result: fw, warnings } = await captureConsole(() =>
+        init({ schemas: { agent: { wide: wideSchema(1100) }, tool: { a: wideSchema(10) } } }))
+      const report = fw.selfCheck()
+      assert.equal(report.ok, true)
+      assert.deepEqual(report.attributeCounts, { turn: 3 + 1100 + 20, nodes: { 'agent.wide': 1100, 'tool.a': 20 } })
+      assert.deepEqual(report.issues.map(i => [i.level, i.code]), [
+        ['warning', 'attribute_count_limit'],
+        ['warning', 'attribute_count_limit'],
+      ])
+      assert.match(report.issues[0].message, /agent\.wide declares 1100 .* limit of 1024/)
+      assert.match(report.issues[1].message, /turn can write 1123 .* limit of 1024/)
+      assert.equal(warnings.length, 2)
+    }),
+  },
+
+  {
+    name: 'with no SDK limit, selfCheck() reads OTEL_SPAN_ATTRIBUTE_COUNT_LIMIT, else the default of 128',
+    run: async () => {
+      const saved = process.env.OTEL_SPAN_ATTRIBUTE_COUNT_LIMIT
+      try {
+        await captureConsole(() => {
+          delete process.env.OTEL_SPAN_ATTRIBUTE_COUNT_LIMIT
+          const fw = init({ schemas: { agent: { wide: wideSchema(200) } } })
+          assert.deepEqual(fw.selfCheck().attributeCountLimit, { value: 128, source: 'default' })
+          assert.ok(fw.selfCheck().issues.some(i => i.code === 'attribute_count_limit'))
+          process.env.OTEL_SPAN_ATTRIBUTE_COUNT_LIMIT = '512'
+          assert.deepEqual(fw.selfCheck().attributeCountLimit, { value: 512, source: 'env' })
+          assert.ok(!fw.selfCheck().issues.some(i => i.code === 'attribute_count_limit'))
+        })
+      } finally {
+        if (saved === undefined) delete process.env.OTEL_SPAN_ATTRIBUTE_COUNT_LIMIT
+        else process.env.OTEL_SPAN_ATTRIBUTE_COUNT_LIMIT = saved
+      }
+    },
+  },
+
+  {
+    name: 'selfCheck() warns when a declared maxLength exceeds the value size limit, 8192 by default',
+    run: () => withSdk(async () => {
+      await captureConsole(() => {
+        const schema: NodeSchema = { attributes: { answer: { type: 'string', maxLength: 10000 }, note: { type: 'string' } } }
+        const byDefault = init({ schemas: { model: { analysis: schema } } }).selfCheck()
+        assert.equal(byDefault.ok, true)
+        assert.deepEqual(byDefault.issues.map(i => i.message), [
+          'app.model.analysis.answer has maxLength 10000, over the exporter value size limit of 8192 bytes',
+        ])
+        const configured = init({ schemas: { model: { analysis: schema } }, valueSizeLimit: 1000 }).selfCheck()
+        assert.equal(configured.valueSizeLimit, 1000)
+        assert.deepEqual(configured.issues.map(i => i.message), [
+          'app.model.analysis.answer has maxLength 10000, over the exporter value size limit of 1000 bytes',
+          'app.model.analysis.note has maxLength 1024, over the exporter value size limit of 1000 bytes',
+        ])
+      })
+    }),
+  },
+
+  {
+    name: 'the noop instance selfCheck() fails with not_initialised and emits no span',
+    run: () => withSdk(async (sdk) => {
+      const report = noopInstance.selfCheck()
+      assert.equal(report.ok, false)
+      assert.deepEqual(report.issues.map(i => [i.level, i.code]), [['error', 'not_initialised']])
+      assert.equal(sdk.spans().length, 0)
+    }),
+  },
+
+  sync('manifest() lists each declared name with its type, the truncated flags, renames and the core names', () => {
+    const fw = init({
+      schemas: {
+        tool: { search: { attributes: { status: { type: 'enum', values: ['ok', 'error'] }, query: { type: 'string', maxLength: 64 } } } },
+        model: { analysis: { attributes: { ttft_ms: { type: 'number' } } } },
+        agent: {
+          planner: {
+            maxLength: 32,
+            attributes: { goal: { type: 'string', renamedFrom: { from: 'objective', until: '2026-12-01' } } },
+          },
+        },
+      },
+    })
+    assert.deepEqual(fw.manifest(), {
+      manifestVersion: 1,
+      package: { name: '@radical-intelligence/flywheel-instrumentation', version: VERSION },
+      attributes: [
+        { name: 'app.agent.planner.goal', type: 'string', source: 'agent.planner', maxLength: 32 },
+        { name: 'app.agent.planner.goal.truncated', type: 'boolean', source: 'agent.planner' },
+        { name: 'app.agent.planner.objective', type: 'string', source: 'agent.planner', maxLength: 32, aliasOf: 'app.agent.planner.goal', until: '2026-12-01' },
+        { name: 'app.agent.planner.objective.truncated', type: 'boolean', source: 'agent.planner', aliasOf: 'app.agent.planner.goal.truncated', until: '2026-12-01' },
+        { name: 'app.model.analysis.ttft_ms', type: 'number', source: 'model.analysis' },
+        { name: 'app.tool.search.query', type: 'string', source: 'tool.search', maxLength: 64 },
+        { name: 'app.tool.search.query.truncated', type: 'boolean', source: 'tool.search' },
+        { name: 'app.tool.search.status', type: 'enum', source: 'tool.search', values: ['ok', 'error'] },
+        { name: 'enduser.id', type: 'string', source: 'core' },
+        { name: 'flywheel.attribute_error', type: 'string[]', source: 'core' },
+        { name: 'session.id', type: 'string', source: 'core' },
+      ],
+    })
+  }),
+
+  sync('manifest() lists no legacy app.<name>.<key> or app.<key> names for tool and model keys', () => {
+    const names = init({
+      schemas: {
+        tool: { search: SEARCH_SCHEMA },
+        model: { analysis: { attributes: { ttft_ms: { type: 'number' }, answer: { type: 'string' } } } },
+      },
+    }).manifest().attributes.map(a => a.name)
+    const allowed = /^(app\.(tool|model|agent)\.|enduser\.id$|session\.id$|flywheel\.)/
+    assert.deepEqual(names.filter(n => !allowed.test(n)), [])
+    assert.ok(names.includes('app.tool.search.status'))
+    assert.ok(names.includes('app.model.analysis.ttft_ms'))
+  }),
+
+  {
+    name: 'every name a schema handle writes is in the manifest',
+    run: () => withSdk(async (sdk) => {
+      const fw = init({ now: at('2026-01-01T00:00:00Z'), schemas: { tool: { search: SEARCH_SCHEMA } } })
+      await sdk.inSpan('request', () => {
+        fw.tool('search', SEARCH_SCHEMA).set({
+          status: 'ok', result_count: 1, latency_ms: 1, cached: true, query: 'x'.repeat(2000), note: 'longer', chapters: ['5'],
+        })
+        fw.user('u-1')
+        fw.session('s-1')
+        ;(fw.tool('search', SEARCH_SCHEMA) as pkg.NodeHandle).set({ extra: 1 })
+      })
+      const names = new Set(fw.manifest().attributes.map(a => a.name))
+      const written = Object.keys(sdk.span('request').attributes)
+      assert.ok(written.length > 10)
+      assert.deepEqual(written.filter(n => !names.has(n)), [])
+    }),
+  },
+
+  sync('registerAttributes() adds a module\'s names to every manifest, and a second call replaces them', () => {
+    registerAttributes('contract.turn', { 'app.turn.status': { type: 'enum', values: ['ok'] }, 'app.turn.ms': { type: 'number' } })
+    registerAttributes('contract.turn', { 'app.turn.status': { type: 'enum', values: ['ok', 'error'] } })
+    try {
+      assert.deepEqual(
+        init().manifest().attributes.filter(a => a.source === 'contract.turn'),
+        [{ name: 'app.turn.status', type: 'enum', source: 'contract.turn', values: ['ok', 'error'] }],
+      )
+      assert.deepEqual(buildManifest().attributes.map(a => a.name), ['app.turn.status', 'enduser.id', 'flywheel.attribute_error', 'session.id'])
+    } finally {
+      registerAttributes('contract.turn', {})
+    }
+  }),
+
+  sync('the noop instance manifest() lists no names', () => {
+    assert.deepEqual(noopInstance.manifest().attributes, [])
+    assert.equal(noopInstance.manifest().manifestVersion, 1)
+  }),
+
+  {
+    name: 'writeManifestFile() imports a schema module and writes its manifest as JSON',
+    run: async () => {
+      const dir = mkdtempSync(join(tmpdir(), 'fw-manifest-'))
+      try {
+        const out = join(dir, 'instrumentation-manifest.json')
+        const written = await writeManifestFile(new URL('./fixtures/schemas.ts', import.meta.url).pathname, out)
+        const read = JSON.parse(readFileSync(out, 'utf8'))
+        assert.deepEqual(read, written)
+        assert.deepEqual(read.attributes.map((a: { name: string }) => a.name), [
+          'app.tool.search.result_count', 'app.turn.status', 'enduser.id', 'flywheel.attribute_error', 'session.id',
+        ])
+      } finally {
+        rmSync(dir, { recursive: true, force: true })
+        registerAttributes('fixture.turn', {})
+      }
+    },
+  },
+
+  sync('VERSION equals the version in package.json', () => {
+    const pkgJson = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
+    assert.equal(VERSION, pkgJson.version)
+  }),
 ]
