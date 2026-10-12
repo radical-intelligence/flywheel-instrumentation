@@ -58,7 +58,15 @@ Status: Not yet. PR 2 (clock) closes it.
 
 Rule: every attribute name follows one schema, and every product uses the same names for the same facts. Attributes carry counts and identifiers in place of free content where possible, and values have a fixed length limit.
 
-Provides: node handles prefix each key as `app.<type>.<name>.<key>`. `set()` writes keys as given. `src/legacy.ts` also writes the old names for tool and model nodes. That dual-write is past its `LEGACY_EXPIRY` (2026-09-18). It stays because saved queries still read the old names, and fls-ai-tool#409 moves them. There are no enums, no string length limit, no counts-for-content rule, and no user or session id attributes.
+Provides: node handles prefix each key as `app.<type>.<name>.<key>`. `set()` writes keys as given. A node handle takes an optional schema as its second argument, for example `tool('search', schema)`. With no schema, a handle writes every key as given. `user(id)` and `session(id)` set `enduser.id` and `session.id` on the active span. `src/legacy.ts` also writes the old names for tool and model nodes, with or without a schema. That dual-write is past its `LEGACY_EXPIRY` (2026-09-18). It stays because saved queries still read the old names, and fls-ai-tool#409 moves them.
+
+Usage:
+
+- Schema: the types are `NodeSchema` and `AttributeSpec` in `src/types.ts`. Each key declares one type: `enum` for states, `count` (a non-negative integer) in place of content, `number`, `boolean`, `string` or `string[]`. Declare the schema with `as const`, or inline, so TypeScript infers the allowed keys and value types for `set()`.
+- Length limit: the handle cuts each string, and each item of a `string[]`, at the key's `maxLength`, else the schema's `maxLength`, else 1024. A cut also writes `<key>.truncated = true`.
+- Invalid write: an undeclared key, a value of the wrong type or a value outside the enum is dropped. The handle adds the full attribute name to the `flywheel.attribute_error` string array on the span, once per name. It does not throw. `init({ strict: true })` throws a `TypeError` in its place. Use strict mode in tests only. See `src/schema.ts`.
+- Rename: `renamedFrom: { from, until }` on a key also writes the value under the old name `from`. That stops at 00:00 UTC on the date `until` (YYYY-MM-DD). `init({ now })` replaces the clock, for tests.
+- User and session ids: pass an opaque id, such as a random or hashed value. Do not pass personal data, such as a name, an email address or an Entra object id. An empty or non-string id is an invalid write.
 
 Tests:
 
@@ -67,8 +75,23 @@ Tests:
 - `a later write to the same key replaces the earlier value`
 - `LEGACY_EXPIRY is 2026-09-18`
 - the three node handle cases listed under practice 1
+- `a schema handle writes declared keys as app.<type>.<name>.<key>, with the same legacy keys`
+- `a schema handle drops an undeclared key and names it in flywheel.attribute_error`
+- `a schema handle drops an enum value outside the declared values and names the key`
+- `a schema handle drops a value of the wrong type, and a count that is not a non-negative integer`
+- `a schema handle cuts a string over the default limit of 1024 and sets <key>.truncated`
+- `a per-key maxLength overrides the schema maxLength, which overrides the default`
+- `flywheel.attribute_error names each dropped key once, across writes on one span`
+- `in strict mode, an invalid write throws and writes nothing for that key`
+- `a rename writes the old and new names before its expiry date, and only the new name from that date`
+- `a rename sets <key>.truncated on both names when it cuts the value`
+- `a schema handle infers the allowed keys and value types`
+- `user(id) and session(id) set enduser.id and session.id on the active span`
+- `user() and session() drop an empty or non-string id and name the key in flywheel.attribute_error`
+- `with no active span, schema handles, user() and session() write nothing and do not throw`
+- `the noop instance accepts a schema, user() and session(), and writes nothing`
 
-Status: Partial. PR 3 (attribute schema, user and session ids, and removal of the dual-write) closes it.
+Status: Met. The removal of the legacy dual-write waits for fls-ai-tool#409, in a follow-up PR.
 
 ### 4. Check the logging works first
 

@@ -1,21 +1,38 @@
 import { trace } from '@opentelemetry/api'
 import type { AttributeValue } from '@opentelemetry/api'
-import { createNodeHandle } from './node.js'
+import { createNodeHandle, createSchemaNodeHandle } from './node.js'
 import { emitMetadata } from './metadata.js'
-import type { FlywheelInstance, NodeHandle, AiSdkTelemetryConfig, AiSdkTelemetryOptions } from './types.js'
+import { reportInvalid, writeSettings } from './schema.js'
+import type { FlywheelInstance, NodeHandle, NodeSchema, NodeType, InitOptions, AiSdkTelemetryConfig, AiSdkTelemetryOptions } from './types.js'
 
-export function createInstance(): FlywheelInstance {
+export function createInstance(options?: InitOptions): FlywheelInstance {
+  const settings = writeSettings(options)
+
+  // The overloads in types.ts give a schema handle its typed keys.
+  const handle = (type: NodeType, name: string, schema?: NodeSchema): NodeHandle<any> =>
+    schema ? createSchemaNodeHandle(type, name, schema, settings) : createNodeHandle(type, name)
+
+  const setId = (attribute: string, id: unknown) => {
+    const span = trace.getActiveSpan()
+    if (!span) return
+    if (typeof id !== 'string' || id.length === 0) {
+      reportInvalid(span, settings, attribute, 'expected a non-empty string')
+      return
+    }
+    span.setAttribute(attribute, id)
+  }
+
   return {
-    tool(name: string): NodeHandle {
-      return createNodeHandle('tool', name)
+    tool(name: string, schema?: NodeSchema) {
+      return handle('tool', name, schema)
     },
 
-    model(name: string): NodeHandle {
-      return createNodeHandle('model', name)
+    model(name: string, schema?: NodeSchema) {
+      return handle('model', name, schema)
     },
 
-    agent(name: string): NodeHandle {
-      return createNodeHandle('agent', name)
+    agent(name: string, schema?: NodeSchema) {
+      return handle('agent', name, schema)
     },
 
     set(attrs: Record<string, AttributeValue>) {
@@ -24,6 +41,14 @@ export function createInstance(): FlywheelInstance {
       for (const [key, value] of Object.entries(attrs)) {
         span.setAttribute(key, value)
       }
+    },
+
+    user(id: string) {
+      setId('enduser.id', id)
+    },
+
+    session(id: string) {
+      setId('session.id', id)
     },
 
     metadata(traceId: string, eventName: string, attrs: Record<string, AttributeValue>) {
