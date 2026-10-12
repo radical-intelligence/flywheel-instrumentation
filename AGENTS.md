@@ -18,10 +18,10 @@ The install runs the `prepare` script, which builds `dist/`. The two OpenTelemet
 To initialise it:
 
 1. Register a tracer provider and a logger provider before any product code runs (for example, a module loaded with `node --import`). The backend sections below name the setup for each backend.
-2. Call `init()` once, after the providers exist. It returns the live instance. On Azure Monitor, call `init({ azureCustomEvents: true })`, so feedback also reaches `customEvents` (see the Azure Monitor section).
+2. Call `init()` once, after the providers exist. It returns the live instance and runs the self-check (practice 4). Pass the product's node schemas as `init({ schemas })`, so the check and the manifest (practice 5) know them. On Azure Monitor, call `init({ azureCustomEvents: true })`, so feedback also reaches `customEvents` (see the Azure Monitor section).
 3. Everywhere else, call `flywheel()`. Before `init()`, it returns a noop instance that writes nothing.
 
-The public API is in `src/index.ts`, and the types are in `src/types.ts`. The subpath exports are in `src/express.ts` and `src/ai-sdk.ts` (see practice 2).
+The public API is in `src/index.ts`, and the types are in `src/types.ts`. The subpath exports are in `src/express.ts` and `src/ai-sdk.ts` (see practice 2), and `src/manifest.ts` (see practice 5).
 
 ## Practices
 
@@ -129,26 +129,90 @@ Status: Met.
 
 Rule: at start-up, the product proves that telemetry reaches the backend before it serves traffic. A missing provider fails that check.
 
-Provides: nothing. With no tracer provider or no active span, every write is a silent no-op. `flush()` resolves at once and does not flush the provider.
+Provides: `selfCheck()` checks the telemetry setup and returns a `SelfCheckReport` (`src/selfCheck.ts`, types in `src/types.ts`). `init()` runs the same check. The checks:
 
-Tests (these describe the current gap):
+- Tracer provider: the global tracer provider is a proxy. The proxy gives a delegate tracer only after a provider is registered, so no delegate is an error (`no_tracer_provider`).
+- Logger provider: the check asks the `flywheel` logger `enabled()`. With no provider, the API logger answers false. The check fails on it (`no_logger_provider`) only with `init({ requireLoggerProvider: true })`. The default is the value of `azureCustomEvents`. An `@opentelemetry/api-logs` version with no `Logger.enabled()` gives a warning in its place.
+- Start-up span: one `INTERNAL` span named `flywheel.startup`, on the `flywheel` tracer, in a new trace. It carries `flywheel.version`, `flywheel.schema.node_count`, `flywheel.schema.attribute_count`, `flywheel.attribute_count_limit`, `flywheel.self_check.ok` and `flywheel.self_check.issues`. A sampler that drops it gives a warning.
+- Attribute count: the check counts the manifest names for each node and for the whole turn. A count over the span attribute count limit gives a warning, because the SDK drops the keys past the limit with no error. The SDK tracer reports the limit through `getSpanLimits()`. With another tracer, the check reads `OTEL_SPAN_ATTRIBUTE_COUNT_LIMIT`, else uses 128.
+- Value size: a declared `maxLength` over the exporter value size limit gives a warning. The limit is `init({ valueSizeLimit })`, default 8192 bytes. That default is the Azure Monitor custom dimension cap. Other exporters have other limits. `maxLength` counts characters, so text that is not ASCII can pass the check and still go over the limit.
+
+Usage:
+
+- Failure: an error sets `ok: false`. `init()` writes each error with `console.error` and each warning with `console.warn`, then returns the live instance. A failed check never stops the product by default. `init({ strict: true })` throws on a failed check and keeps the previous instance. Use strict mode in tests only.
+- Start-up span: `init()` emits it on the first call in the process that finds a tracer provider. Each `selfCheck()` call emits one.
+- The noop instance reports `ok: false` with `not_initialised`, and emits nothing.
+- Query-side checks: the start-up span proves only that the SDK has the span. The backend checks below prove that the data arrived and that it joins. Run them after each deploy, and on a schedule.
+
+| Check | Rule |
+|---|---|
+| Start-up | At least one `flywheel.startup` span in the last 15 minutes after a deploy or a restart. |
+| Users | More than one distinct `enduser.id` over one day of traffic. One value means every turn has the same id, for example a service account. |
+| Feedback join | A join from feedback to turns keeps every feedback row. A row with no turn means the turn ref was lost. |
+| Attribute limit | No exported turn has as many attributes as the span attribute count limit. A turn at the limit has lost keys. |
+
+Azure Monitor (KQL, Application Insights). Each query ran against the FLS dev resource on 2026-10-13. That resource has no `flywheel.startup` span yet, so the first query returned zero rows:
+
+- Start-up: `union requests, dependencies | where timestamp > ago(15m) | where name == 'flywheel.startup' | summarize startups = count(), latest = max(timestamp)`
+- Users: `requests | where timestamp > ago(1d) | where isnotempty(user_AuthenticatedId) | summarize users = dcount(user_AuthenticatedId)`. The exporter writes `enduser.id` to `user_AuthenticatedId`, not to `customDimensions`.
+- Feedback join: `let feedback = customEvents | where timestamp > ago(1d) | where name in ('user_feedback', 'tester_feedback') | project operation_Id, fb = itemId; let turns = requests | where timestamp > ago(2d) | summarize by operation_Id, turn = true; feedback | join kind=leftouter turns on operation_Id | summarize feedback = dcount(fb), rows = count(), joined = countif(turn == true)`. It passes when the three counts are equal. With `feedback()` spans and no `azureCustomEvents`, read the feedback from `dependencies` by name.
+- Attribute limit: `requests | where timestamp > ago(1d) | extend keys = array_length(bag_keys(customDimensions)) | summarize maxKeys = max(keys), atLimit = countif(keys >= 1024)`. Replace 1024 with the configured limit. It passes when `atLimit` is 0.
+
+Langfuse (public API v2, basic auth with the project keys). Organisations created from 2026-09-16 have only the v2 API. Each request ran against a Langfuse project on 2026-10-13, which checks the request shape. None ran against a product that uses this package:
+
+- Start-up: `GET /api/public/v2/observations?name=flywheel.startup&fromStartTime=<15 minutes ago>&toStartTime=<now>&limit=1`. It passes when `data` is not empty.
+- Users: `GET /api/public/v2/metrics?query=<{"view":"observations","metrics":[{"measure":"uniqueUserIds","aggregation":"count"}],"dimensions":[],"filters":[],"fromTimestamp":"<1 day ago>","toTimestamp":"<now>"}>`. It passes when `count_uniqueUserIds` is over 1. Unverified: Langfuse fills `userId` from `user.id` or `langfuse.user.id`. Whether it also reads `enduser.id` is not known, so the count can be 0 with correct telemetry.
+- Feedback join: `GET /api/public/v2/observations?name=user_feedback&fromStartTime=<1 day ago>&toStartTime=<now>`, then for each row `GET /api/public/v2/observations?traceId=<traceId>`. It passes when each `parentObservationId` is an observation in its trace. Unverified: no feedback row from this package was in the project.
+- Attribute limit: `GET /api/public/v2/observations?fromStartTime=<1 day ago>&toStartTime=<now>&fields=core,metadata`, then count the `metadata` keys of each turn observation. Unverified: the metadata also holds resource and scope keys, so the count is an upper bound.
+
+Tests:
 
 - `flywheel() returns the noop instance before init()`
+- `the first init() with a tracer provider emits one flywheel.startup span, at the root, with the version and schema counts`
+- `a later init() emits no startup span, and selfCheck() emits one on each call`
+- `with a tracer and a logger provider, selfCheck() reports ok with no issues`
+- `with no tracer provider, selfCheck() fails with no_tracer_provider and init() writes it to the console`
+- `in strict mode, init() throws when the self-check fails, and flywheel() keeps the previous instance`
+- `with requireLoggerProvider or azureCustomEvents, selfCheck() fails with no logger provider`
+- `selfCheck() warns when a node or the turn declares more names than the SDK attribute count limit, and stays ok`
+- `with no SDK limit, selfCheck() reads OTEL_SPAN_ATTRIBUTE_COUNT_LIMIT, else the default of 128`
+- `selfCheck() warns when a declared maxLength exceeds the value size limit, 8192 by default`
+- `the noop instance selfCheck() fails with not_initialised and emits no span`
 - `with no active span, every write is dropped and getTraceId() is undefined`
 - `the noop instance writes nothing, even inside an active span`
 - `flush() resolves to undefined on both instances`
 
-Status: Not yet. PR 6 (`selfCheck`) closes it.
+Status: Met.
 
 ### 5. Each evaluator lists the data it needs
 
 Rule: each evaluator declares the fields it `requires` and the values it `expects`. A check compares those lists with the fields the product writes.
 
-Provides: nothing. The evaluator contracts live in the Flywheel repository.
+Provides: `manifest()` returns an `InstrumentationManifest`: every attribute name the product can write on a turn span, sorted by name (`src/manifest.ts`, types in `src/types.ts`). It lists:
 
-Tests: none.
+- For each key of each schema in `init({ schemas })`: `app.<type>.<name>.<key>`, its `.truncated` flag for a string or a string array, the old name of a rename with `until`, and the legacy name of a tool or model key. A rename or legacy name has `aliasOf`, the name it repeats.
+- The core names: `enduser.id`, `session.id` and `flywheel.attribute_error`.
+- The names that other modules add with `registerAttributes(source, attributes)`, from the `./manifest` subpath. Each key is a full attribute name with an `AttributeSpec`. A second call with the same source replaces the first.
 
-Status: Not yet. PR 6 (field manifest, checked against evaluator `requires`) closes it.
+Each entry has `name`, `type` and `source`, and `values` for an enum and `maxLength` for a string. Names that a product writes with `set()` or a handle with no schema are not in the manifest, unless the product registers them. That includes the `app.timeline.*` names (practice 2).
+
+Usage:
+
+- The product keeps its node schemas in one module, and exports them as `schemas` (or as the default export), typed `NodeSchemas`. The product passes the same object to `init({ schemas })`.
+- The `flywheel-instrumentation-manifest` command imports that module and writes `instrumentation-manifest.json` (`src/cli.ts`): `npx flywheel-instrumentation-manifest <schema-module> [--out <file>]`. A TypeScript module needs a loader: `node --import tsx node_modules/.bin/flywheel-instrumentation-manifest <schema-module>`.
+- `flywheel check` in the Flywheel repository reads the file and compares it with each evaluator's `requires` (see `docs/evaluators.md` there).
+- The noop instance lists no names, because it writes none.
+
+Tests:
+
+- `manifest() lists each declared name with its type, the truncated flags, renames, legacy names and the core names`
+- `every name a schema handle writes is in the manifest`
+- `registerAttributes() adds a module's names to every manifest, and a second call replaces them`
+- `the noop instance manifest() lists no names`
+- `writeManifestFile() imports a schema module and writes its manifest as JSON`
+- `VERSION equals the version in package.json`
+
+Status: Met.
 
 ### 6. Feedback is attached to the turn
 
@@ -253,7 +317,7 @@ A fault in a turn belongs to one of three layers. Find the layer before you chan
 
 - Keep every case in `test/contract.ts` passing. Do not change an assertion to make a change pass. If a change of behaviour is intended, change the case in the same PR and say why in the PR body.
 - Add a case to `test/contract.ts` for each new behaviour. Cases use `node:assert` and the SDK in `test/sdk.ts`, with no test framework globals, so any runner can run them.
-- Keep the case that reads `flywheel()` before `init()` first in the list.
+- Keep the case that reads `flywheel()` before `init()` first in the list, and the case that reads the start-up span of the first `init()` second.
 - Update the status lines and test lists in this file in the same PR.
 - Run `npm run build`, `npm run typecheck` and `npm test` before you open a PR. CI runs the same steps on Linux.
 - Do not copy code into this file. Reference the source file.
