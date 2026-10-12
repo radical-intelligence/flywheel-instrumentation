@@ -18,7 +18,7 @@ The install runs the `prepare` script, which builds `dist/`. The two OpenTelemet
 To initialise it:
 
 1. Register a tracer provider and a logger provider before any product code runs (for example, a module loaded with `node --import`). The backend sections below name the setup for each backend.
-2. Call `init()` once, after the providers exist. It returns the live instance.
+2. Call `init()` once, after the providers exist. It returns the live instance. On Azure Monitor, call `init({ azureCustomEvents: true })`, so feedback also reaches `customEvents` (see the Azure Monitor section).
 3. Everywhere else, call `flywheel()`. Before `init()`, it returns a noop instance that writes nothing.
 
 The public API is in `src/index.ts`, and the types are in `src/types.ts`. The subpath exports are in `src/express.ts` and `src/ai-sdk.ts` (see practice 2).
@@ -155,17 +155,54 @@ Status: Not yet. PR 6 (field manifest, checked against evaluator `requires`) clo
 
 Rule: each piece of user feedback joins the trace of the turn it rates, so a reader finds both in one place.
 
-Provides: `metadata(traceId, eventName, attrs)` emits one OpenTelemetry log record in the given trace (`src/metadata.ts`). It names the event with the Azure-specific key `microsoft.custom_event.name`. Its span id is the first 16 hex digits of the trace id, so it does not point to a span that exists. Langfuse does not ingest log records (see the Langfuse section).
+Provides: `turnRef()` returns the trace ID and span ID of the active span. The product calls it during the turn and stores the ref with the response. `feedback(event)` writes the event as one span (`src/feedback.ts`, types in `src/types.ts`):
+
+- With a valid `turn` ref, the span joins the turn's trace, and its parent is the turn span.
+- With no `turn` ref, or an invalid one, the span joins a per-session trace. The trace ID and parent span ID derive from the `session` id, so every process puts one session's events on one trace. That parent span is never written. With no `session`, the event joins one session per process. Flywheel's `src/feedback/emit.ts` uses the same rule.
+- The span is `INTERNAL`, on the `flywheel` tracer, and starts and ends at `at` (default now).
+
+Event kinds, after Flywheel ADR 005 (`docs/adrs/005-implicit-user-feedback.md` and `src/feedback/events.ts` in the Flywheel repository):
+
+| Kind | ADR 005 class | Typed attributes |
+|---|---|---|
+| `rating` | `explicit` | `rating`, `rating.<criterion>`, `reason`, `reasons` (joined with commas), `comment` |
+| `decision` | `decision` | `decision`, `reason` |
+| `edit` | `decision` | `edit.draft`, `edit.text` |
+| `dwell` | `ui` | `element`, `dwell_ms` |
+| `next_message` | `conversation` | `next_message` |
+
+- Every event also writes `kind`, `class`, `session`, and the `subject.*` and `actor.*` fields it has.
+- Each typed attribute has the prefix `namespace.`, default `feedback`. So a rating writes `feedback.rating`, `feedback.reason` and `feedback.reasons`, as FLS's saved queries read them.
+- FLS tester feedback sets `namespace: 'tester'` and puts its scores in `ratings`, which writes `tester.rating.<criterion>` and `tester.comment`. Its other `tester.*` keys go in `attributes`.
+- `attributes` are written as given, after the typed ones.
+- `event.name` is the event `name`, default `feedback.<kind>`. It is also the span name, and no attribute replaces it.
+
+`metadata(traceId, eventName, attrs)` stays, deprecated in favour of `feedback()`. It emits one OpenTelemetry log record in the given trace (`src/metadata.ts`). It names the event with `microsoft.custom_event.name`. Its span id is the first 16 hex digits of the trace id, so it does not point to a span that exists.
 
 Tests:
 
+- `turnRef() returns the trace ID and span ID of the active span`
+- `turnRef() is undefined with no active span`
+- `feedback joins its turn's trace as a child of the turn span`
+- `feedback joins its turn, not the span active when it is written`
+- `a rating writes event.name and the feedback.* attributes FLS queries read`
+- `namespace writes the typed attributes under its prefix, so tester ratings keep tester.*`
+- `each behaviour signal writes its kind, its ADR 005 class and its typed attributes`
+- `an attribute cannot replace event.name`
+- `feedback with no turn ref joins one trace per session, the same for every event in it`
+- `feedback with an invalid turn ref joins its session's trace`
+- `feedback with no turn ref and no session joins one trace for the process`
+- `feedback starts and ends its span at the at time`
+- `feedback writes no log record by default`
+- `with azureCustomEvents, feedback also emits a log record named by microsoft.custom_event.name, in the feedback span`
+- `the noop instance drops feedback, and its turnRef() is undefined`
 - `metadata emits one INFO log record on the flywheel logger, named by microsoft.custom_event.name`
 - `metadata puts the record in the given trace, with the first 16 hex digits as its span ID`
 - `metadata uses the given trace ID, not the active span`
 - `metadata with a trace ID that is not 32 hex digits keeps the attributes and drops the trace`
 - `an attribute named microsoft.custom_event.name replaces the event name`
 
-Status: Partial. PR 5 (feedback as a span on the turn's trace) closes it.
+Status: Met.
 
 ### 7. Agents read the record and act
 
@@ -196,15 +233,21 @@ A fault in a turn belongs to one of three layers. Find the layer before you chan
 - Where data lands (unverified from code; from the FLS query notes in `evals/flywheel/agent-knowledge/kql-patterns/tables.md`):
   - Incoming request spans go to `requests`. Attributes that node handles and `set()` write on the request span are in `customDimensions`.
   - AI SDK model call spans (`ai.*`) go to `dependencies`, linked by `operation_Id`.
-  - `metadata()` log records go to `customEvents`, named by `microsoft.custom_event.name`, with the attributes in `customDimensions`.
   - A single dimension value is cut at about 8 KB.
+- Where feedback lands. These rows are confirmed from the exporter code (`@azure/monitor-opentelemetry-exporter` 1.0.0-beta.44, `dist/esm/utils/spanUtils.js` and `dist/esm/utils/logUtils.js`), not from a live resource:
+  - The `feedback()` span is `INTERNAL`, so it goes to `dependencies`. Its `operation_Id` is the turn's trace ID, and its `operation_ParentId` is the turn span ID.
+  - With `init({ azureCustomEvents: true })`, `feedback()` also emits a log record with `microsoft.custom_event.name` set to the event name. It goes to `customEvents`, with `name` set to the event name and the attributes in `customDimensions`. Its `operation_Id` is the turn's trace ID, and its `operation_ParentId` is the feedback span ID.
+  - `metadata()` log records go to `customEvents` the same way. Their `operation_ParentId` is the first 16 hex digits of the trace ID.
+  - FLS's saved queries (`user_feedback.kql` and `tester_feedback.kql` in fls-ai-tool) read `customEvents` by `name` and `customDimensions`. They keep working when FLS moves from `metadata()` to `feedback()` with `azureCustomEvents`, the same event names and the attribute mapping under practice 6.
 
 ### Langfuse
 
 - Exporter: `LangfuseSpanProcessor` from `@langfuse/otel`, added to the tracer provider. FLS registers it on a `NodeTracerProvider` in `apps/server/telemetry.mjs` in fls-ai-tool, and runs it only when Azure Monitor is off.
 - Spans become observations on a Langfuse trace.
 - Token usage comes from the `gen_ai.*` attributes that AI SDK telemetry writes, when `aiSdkTelemetry()` turns it on.
-- Langfuse ingests traces only. It does not ingest OpenTelemetry log records, so `metadata()` events do not arrive. PR 5 changes feedback to a span. The Flywheel writes its own feedback as spans for the same reason (`src/feedback/emit.ts` in the Flywheel repository).
+- Langfuse ingests traces only. It does not ingest OpenTelemetry log records, so `metadata()` events and the `azureCustomEvents` log records do not arrive.
+- A `feedback()` span becomes an observation on the turn's trace, under the turn span's observation. The Flywheel writes its own feedback as spans for the same reason (`src/feedback/emit.ts` in the Flywheel repository).
+- Feedback with no turn ref becomes an observation on the session's trace. That trace has no root observation, because the parent span is never written. Unverified: how Langfuse shows an observation whose parent is missing (assumed: at the top level of the trace).
 - Unverified: how Langfuse shows `app.*` attributes (assumed: observation metadata).
 
 ## Rules for an agent changing this package
