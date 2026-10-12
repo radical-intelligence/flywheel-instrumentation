@@ -49,8 +49,14 @@ export interface NodeHandle<A = Record<string, AttributeValue>> {
   set(attrs: A): void
 }
 
+/** The node schemas a product declares, by node type and node name. */
+export type NodeSchemas = { [T in NodeType]?: Record<string, NodeSchema> }
+
 export interface InitOptions {
-  /** Throw on an invalid write, in place of dropping it. For tests only. */
+  /**
+   * Throw on an invalid write, in place of dropping it. `init()` also throws
+   * when the self-check fails. For tests only.
+   */
   strict?: boolean
   /** The clock for renames, in milliseconds since the epoch. The default is `Date.now`. */
   now?: () => number
@@ -60,6 +66,71 @@ export interface InitOptions {
    * to `customEvents`. Default false.
    */
   azureCustomEvents?: boolean
+  /** The node schemas the product uses. `manifest()` and `selfCheck()` read them. */
+  schemas?: NodeSchemas
+  /**
+   * The product calls `metadata()`, so the self-check fails when no logger
+   * provider is registered. The default is the value of `azureCustomEvents`.
+   */
+  requireLoggerProvider?: boolean
+  /** The largest attribute value, in bytes, that the exporter keeps. The default is 8192. */
+  valueSizeLimit?: number
+}
+
+/** One attribute name that the product can write on a turn span. */
+export interface ManifestAttribute {
+  name: string
+  type: AttributeSpec['type']
+  /** `core`, `<type>.<name>` for a node, or the source a module registered. */
+  source: string
+  /** The allowed values of an enum. */
+  values?: string[]
+  /** The length limit of a string, or of each item of a string array. */
+  maxLength?: number
+  /** Set on a legacy or renamed name: the attribute that this name repeats. */
+  aliasOf?: string
+  /** Set on a renamed name: the date (YYYY-MM-DD) its writes stop. */
+  until?: string
+}
+
+/** Every attribute name the product can write, for tools that do not run JavaScript. */
+export interface InstrumentationManifest {
+  manifestVersion: 1
+  package: { name: string; version: string }
+  attributes: ManifestAttribute[]
+}
+
+export type SelfCheckIssueCode =
+  | 'not_initialised'
+  | 'no_tracer_provider'
+  | 'no_logger_provider'
+  | 'logger_provider_unknown'
+  | 'startup_span_not_sampled'
+  | 'attribute_count_limit'
+  | 'value_size_limit'
+
+export interface SelfCheckIssue {
+  /** An error sets `ok` to false. A warning does not. */
+  level: 'error' | 'warning'
+  code: SelfCheckIssueCode
+  message: string
+}
+
+export interface SelfCheckReport {
+  /** False when any issue is an error. */
+  ok: boolean
+  /** A tracer provider is registered as the global provider. */
+  tracerProvider: boolean
+  /** The flywheel logger is enabled. Undefined when the logs API cannot tell. */
+  loggerProvider: boolean | undefined
+  /** The `flywheel.startup` span this check emitted, or undefined when it emitted none. */
+  startupSpan: { traceId: string; sampled: boolean } | undefined
+  /** The span attribute count limit, and where the check read it. */
+  attributeCountLimit: { value: number; source: 'sdk' | 'env' | 'default' }
+  valueSizeLimit: number
+  /** The number of attribute names each node can write, and the total for one turn. */
+  attributeCounts: { turn: number; nodes: Record<string, number> }
+  issues: SelfCheckIssue[]
 }
 
 export interface FlywheelInstance {
@@ -95,6 +166,13 @@ export interface FlywheelInstance {
   recordUsage(tl: Timeline, usage: UsageLike, marks: Record<string, number>): void
   /** The timeline as flat `app.timeline.*` span attributes. */
   timelineAttributes(payload: TimelinePayload): SpanAttrs
+  /**
+   * Checks the telemetry setup and emits one `flywheel.startup` span. `init()`
+   * runs the same check, and emits the span on the first `init()` only.
+   */
+  selfCheck(): SelfCheckReport
+  /** Every attribute name that the declared schemas and the registered modules can write. */
+  manifest(): InstrumentationManifest
 }
 
 export interface AiSdkTelemetryOptions {

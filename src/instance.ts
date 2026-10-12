@@ -5,6 +5,8 @@ import { emitMetadata } from './metadata.js'
 import { clockMethods } from './timeline.js'
 import { activeTurnRef, emitFeedback } from './feedback.js'
 import { reportInvalid, writeSettings } from './schema.js'
+import { buildManifest } from './manifest.js'
+import { runSelfCheck, selfCheckSettings } from './selfCheck.js'
 import type {
   FlywheelInstance, NodeHandle, NodeSchema, NodeType, InitOptions, AiSdkTelemetryConfig, AiSdkTelemetryOptions, FeedbackEvent,
 } from './types.js'
@@ -12,6 +14,8 @@ import type {
 export function createInstance(options?: InitOptions): FlywheelInstance {
   const settings = writeSettings(options)
   const customEvents = options?.azureCustomEvents ?? false
+  const schemas = options?.schemas ?? {}
+  const checkSettings = selfCheckSettings(options)
 
   // The overloads in types.ts give a schema handle its typed keys.
   const handle = (type: NodeType, name: string, schema?: NodeSchema): NodeHandle<any> =>
@@ -86,6 +90,14 @@ export function createInstance(options?: InitOptions): FlywheelInstance {
       // OTEL flush is handled by the provider registered in telemetry.mjs.
       // This method exists so callers can await without knowing whether OTEL
       // is live or noop.
+    },
+
+    selfCheck() {
+      return runSelfCheck(buildManifest(schemas), checkSettings, true)
+    },
+
+    manifest() {
+      return buildManifest(schemas)
     },
 
     ...clockMethods,
