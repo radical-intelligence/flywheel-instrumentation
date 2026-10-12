@@ -1,7 +1,6 @@
 import { trace } from '@opentelemetry/api'
 import type { AttributeValue } from '@opentelemetry/api'
 import type { NodeType, NodeHandle, NodeSchema } from './types.js'
-import { writeLegacyAttributes } from './legacy.js'
 import { checkValue, renameActive, reportInvalid, schemaMaxLength } from './schema.js'
 import type { WriteSettings } from './schema.js'
 
@@ -14,7 +13,6 @@ export function createNodeHandle(type: NodeType, name: string): NodeHandle {
       if (!span) return
       for (const [key, value] of Object.entries(attrs)) {
         span.setAttribute(`${prefix}${key}`, value)
-        writeLegacyAttributes(span, type, name, key, value)
       }
     },
   }
@@ -55,7 +53,6 @@ export function createSchemaNodeHandle(
           span.setAttribute(`${prefix}${k}`, checked.value)
           if (checked.truncated) span.setAttribute(`${prefix}${k}.truncated`, true)
         }
-        writeLegacyAttributes(span, type, name, key, checked.value)
       }
     },
   }

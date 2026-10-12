@@ -15,7 +15,7 @@ import assert from 'node:assert/strict'
 import { trace, SpanKind, TraceFlags } from '@opentelemetry/api'
 import { SeverityNumber } from '@opentelemetry/api-logs'
 import * as pkg from '../src/index.js'
-import { init, flywheel, noopInstance, LEGACY_EXPIRY } from '../src/index.js'
+import { init, flywheel, noopInstance } from '../src/index.js'
 import type { NodeSchema, TurnRef } from '../src/index.js'
 import { recordStreamPart } from '../src/ai-sdk.js'
 import { requestTimeline, startTimeline, timedMiddleware } from '../src/express.js'
@@ -73,12 +73,8 @@ export const contractCases: ContractCase[] = [
     assert.equal(flywheel(), noopInstance)
   }),
 
-  sync('the package exports init, flywheel, noopInstance and LEGACY_EXPIRY', () => {
-    assert.deepEqual(Object.keys(pkg).sort(), ['LEGACY_EXPIRY', 'flywheel', 'init', 'noopInstance'])
-  }),
-
-  sync('LEGACY_EXPIRY is 2026-09-18', () => {
-    assert.equal(LEGACY_EXPIRY, '2026-09-18')
+  sync('the package exports init, flywheel and noopInstance', () => {
+    assert.deepEqual(Object.keys(pkg).sort(), ['flywheel', 'init', 'noopInstance'])
   }),
 
   sync('init() returns a live instance, and flywheel() returns it after', () => {
@@ -95,7 +91,7 @@ export const contractCases: ContractCase[] = [
   }),
 
   {
-    name: 'tool(name).set writes app.tool.<name>.<key> and the legacy app.<name>.<key>',
+    name: 'tool(name).set writes app.tool.<name>.<key> only, with no app.<name>.<key>',
     run: () => withSdk(async (sdk) => {
       const fw = init()
       await sdk.inSpan('request', () => {
@@ -103,15 +99,13 @@ export const contractCases: ContractCase[] = [
       })
       assert.deepEqual(sdk.span('request').attributes, {
         'app.tool.search.latency_ms': 200,
-        'app.search.latency_ms': 200,
         'app.tool.search.embed_ms': 50,
-        'app.search.embed_ms': 50,
       })
     }),
   },
 
   {
-    name: 'model(name).set writes app.model.<name>.<key> and the legacy app.<key>, with ttft_ms renamed',
+    name: 'model(name).set writes app.model.<name>.<key> only, with no app.<key> or app.time_to_first_token_ms',
     run: () => withSdk(async (sdk) => {
       const fw = init()
       await sdk.inSpan('request', () => {
@@ -119,17 +113,14 @@ export const contractCases: ContractCase[] = [
       })
       assert.deepEqual(sdk.span('request').attributes, {
         'app.model.legal-analysis.ttft_ms': 150,
-        'app.time_to_first_token_ms': 150,
         'app.model.legal-analysis.stream_total_ms': 3000,
-        'app.stream_total_ms': 3000,
         'app.model.legal-analysis.cited_chapters': 'Ch 5; Ch 8',
-        'app.cited_chapters': 'Ch 5; Ch 8',
       })
     }),
   },
 
   {
-    name: 'agent(name).set writes app.agent.<name>.<key> only, with no legacy key',
+    name: 'agent(name).set writes app.agent.<name>.<key> only',
     run: () => withSdk(async (sdk) => {
       const fw = init()
       await sdk.inSpan('request', () => {
@@ -155,7 +146,7 @@ export const contractCases: ContractCase[] = [
       assert.equal(attrs['app.tool.search.ratio'], 0.5)
       assert.equal(attrs['app.tool.search.flag'], false)
       assert.deepEqual(attrs['app.tool.search.list'], ['x', 'y'])
-      assert.deepEqual(attrs['app.search.list'], ['x', 'y'])
+      assert.equal(attrs['app.search.list'], undefined)
     }),
   },
 
@@ -181,10 +172,11 @@ export const contractCases: ContractCase[] = [
       await sdk.inSpan('request', () => {
         fw.set({ 'app.pii.latency_ms': 1 })
         fw.tool('pii').set({ latency_ms: 2 })
+        fw.tool('pii').set({ latency_ms: 3 })
       })
       assert.deepEqual(sdk.span('request').attributes, {
-        'app.pii.latency_ms': 2,
-        'app.tool.pii.latency_ms': 2,
+        'app.pii.latency_ms': 1,
+        'app.tool.pii.latency_ms': 3,
       })
     }),
   },
@@ -204,7 +196,6 @@ export const contractCases: ContractCase[] = [
       assert.deepEqual(sdk.span('child').attributes, {
         'app.where': 'child',
         'app.tool.search.latency_ms': 1,
-        'app.search.latency_ms': 1,
       })
     }),
   },
@@ -366,7 +357,7 @@ export const contractCases: ContractCase[] = [
   },
 
   {
-    name: 'a schema handle writes declared keys as app.<type>.<name>.<key>, with the same legacy keys',
+    name: 'a schema handle writes declared keys as app.<type>.<name>.<key> only',
     run: () => withSdk(async (sdk) => {
       const fw = init()
       await sdk.inSpan('request', () => {
@@ -376,17 +367,11 @@ export const contractCases: ContractCase[] = [
       })
       assert.deepEqual(sdk.span('request').attributes, {
         'app.tool.search.status': 'ok',
-        'app.search.status': 'ok',
         'app.tool.search.result_count': 3,
-        'app.search.result_count': 3,
         'app.tool.search.latency_ms': 12.5,
-        'app.search.latency_ms': 12.5,
         'app.tool.search.cached': false,
-        'app.search.cached': false,
         'app.tool.search.chapters': ['5', '8'],
-        'app.search.chapters': ['5', '8'],
         'app.model.legal-analysis.ttft_ms': 150,
-        'app.time_to_first_token_ms': 150,
         'app.agent.planner.steps': 2,
       })
     }),
@@ -456,7 +441,7 @@ export const contractCases: ContractCase[] = [
       const attrs = sdk.span('request').attributes
       assert.equal(attrs['app.tool.search.query'], 'x'.repeat(1024))
       assert.equal(attrs['app.tool.search.query.truncated'], true)
-      assert.equal(attrs['app.search.query'], 'x'.repeat(1024))
+      assert.equal(attrs['app.search.query'], undefined)
       assert.equal(attrs['flywheel.attribute_error'], undefined)
     }),
   },
