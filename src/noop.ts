@@ -1,6 +1,6 @@
 import type { FlywheelInstance, NodeHandle, AiSdkTelemetryConfig, AiSdkTelemetryOptions } from './types.js'
 
-const noopHandle: NodeHandle = {
+const noopHandle: NodeHandle<any> = {
   set() {},
 }
 
@@ -9,6 +9,8 @@ export const noopInstance: FlywheelInstance = {
   model() { return noopHandle },
   agent() { return noopHandle },
   set() {},
+  user() {},
+  session() {},
   metadata() {},
   getTraceId() { return undefined },
   aiSdkTelemetry(options?: AiSdkTelemetryOptions): AiSdkTelemetryConfig {

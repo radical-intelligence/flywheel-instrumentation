@@ -5,6 +5,12 @@ export type {
   FlywheelInstance,
   NodeHandle,
   NodeType,
+  NodeSchema,
+  AttributeSpec,
+  Rename,
+  SpecValue,
+  SchemaAttributes,
+  InitOptions,
   AiSdkTelemetryOptions,
   AiSdkTelemetryConfig,
 } from './types.js'

@@ -16,6 +16,7 @@ import { trace, TraceFlags } from '@opentelemetry/api'
 import { SeverityNumber } from '@opentelemetry/api-logs'
 import * as pkg from '../src/index.js'
 import { init, flywheel, noopInstance, LEGACY_EXPIRY } from '../src/index.js'
+import type { NodeSchema } from '../src/index.js'
 import { withSdk } from './sdk.js'
 
 export interface ContractCase {
@@ -26,6 +27,20 @@ export interface ContractCase {
 const TRACE_ID = '0af7651916cd43dd8448eb211c80319c'
 
 const sync = (name: string, fn: () => void): ContractCase => ({ name, run: async () => fn() })
+
+const SEARCH_SCHEMA = {
+  attributes: {
+    status: { type: 'enum', values: ['ok', 'empty', 'error'] },
+    result_count: { type: 'count' },
+    latency_ms: { type: 'number' },
+    cached: { type: 'boolean' },
+    query: { type: 'string' },
+    note: { type: 'string', maxLength: 4 },
+    chapters: { type: 'string[]' },
+  },
+} as const satisfies NodeSchema
+
+const at = (iso: string) => () => Date.parse(iso)
 
 export const contractCases: ContractCase[] = [
   // Must stay first. See the header.
@@ -322,6 +337,278 @@ export const contractCases: ContractCase[] = [
       assert.equal(traceId, undefined)
       assert.deepEqual(sdk.span('request').attributes, {})
       assert.equal(sdk.logRecords().length, 0)
+    }),
+  },
+
+  {
+    name: 'a schema handle writes declared keys as app.<type>.<name>.<key>, with the same legacy keys',
+    run: () => withSdk(async (sdk) => {
+      const fw = init()
+      await sdk.inSpan('request', () => {
+        fw.tool('search', SEARCH_SCHEMA).set({ status: 'ok', result_count: 3, latency_ms: 12.5, cached: false, chapters: ['5', '8'] })
+        fw.model('legal-analysis', { attributes: { ttft_ms: { type: 'number' } } }).set({ ttft_ms: 150 })
+        fw.agent('planner', { attributes: { steps: { type: 'count' } } }).set({ steps: 2 })
+      })
+      assert.deepEqual(sdk.span('request').attributes, {
+        'app.tool.search.status': 'ok',
+        'app.search.status': 'ok',
+        'app.tool.search.result_count': 3,
+        'app.search.result_count': 3,
+        'app.tool.search.latency_ms': 12.5,
+        'app.search.latency_ms': 12.5,
+        'app.tool.search.cached': false,
+        'app.search.cached': false,
+        'app.tool.search.chapters': ['5', '8'],
+        'app.search.chapters': ['5', '8'],
+        'app.model.legal-analysis.ttft_ms': 150,
+        'app.time_to_first_token_ms': 150,
+        'app.agent.planner.steps': 2,
+      })
+    }),
+  },
+
+  {
+    name: 'a schema handle drops an undeclared key and names it in flywheel.attribute_error',
+    run: () => withSdk(async (sdk) => {
+      const fw = init()
+      await sdk.inSpan('request', () => {
+        const search = fw.tool('search', SEARCH_SCHEMA) as pkg.NodeHandle
+        search.set({ result_count: 1, raw_query: 'my landlord' })
+      })
+      const attrs = sdk.span('request').attributes
+      assert.equal(attrs['app.tool.search.raw_query'], undefined)
+      assert.equal(attrs['app.search.raw_query'], undefined)
+      assert.equal(attrs['app.tool.search.result_count'], 1)
+      assert.deepEqual(attrs['flywheel.attribute_error'], ['app.tool.search.raw_query'])
+    }),
+  },
+
+  {
+    name: 'a schema handle drops an enum value outside the declared values and names the key',
+    run: () => withSdk(async (sdk) => {
+      const fw = init()
+      await sdk.inSpan('request', () => {
+        const search = fw.tool('search', SEARCH_SCHEMA) as pkg.NodeHandle
+        search.set({ status: 'timeout' })
+      })
+      const attrs = sdk.span('request').attributes
+      assert.equal(attrs['app.tool.search.status'], undefined)
+      assert.equal(attrs['app.search.status'], undefined)
+      assert.deepEqual(attrs['flywheel.attribute_error'], ['app.tool.search.status'])
+    }),
+  },
+
+  {
+    name: 'a schema handle drops a value of the wrong type, and a count that is not a non-negative integer',
+    run: () => withSdk(async (sdk) => {
+      const fw = init()
+      await sdk.inSpan('request', () => {
+        const search = fw.tool('search', SEARCH_SCHEMA) as pkg.NodeHandle
+        search.set({ query: 42, cached: 'yes', latency_ms: 'fast', chapters: [1, 2] })
+        search.set({ result_count: -1 })
+        search.set({ result_count: 1.5 })
+        search.set({ result_count: 'three results' })
+      })
+      assert.deepEqual(sdk.span('request').attributes, {
+        'flywheel.attribute_error': [
+          'app.tool.search.query',
+          'app.tool.search.cached',
+          'app.tool.search.latency_ms',
+          'app.tool.search.chapters',
+          'app.tool.search.result_count',
+        ],
+      })
+    }),
+  },
+
+  {
+    name: 'a schema handle cuts a string over the default limit of 1024 and sets <key>.truncated',
+    run: () => withSdk(async (sdk) => {
+      const fw = init()
+      await sdk.inSpan('request', () => {
+        fw.tool('search', SEARCH_SCHEMA).set({ query: 'x'.repeat(2000) })
+      })
+      const attrs = sdk.span('request').attributes
+      assert.equal(attrs['app.tool.search.query'], 'x'.repeat(1024))
+      assert.equal(attrs['app.tool.search.query.truncated'], true)
+      assert.equal(attrs['app.search.query'], 'x'.repeat(1024))
+      assert.equal(attrs['flywheel.attribute_error'], undefined)
+    }),
+  },
+
+  {
+    name: 'a per-key maxLength overrides the schema maxLength, which overrides the default',
+    run: () => withSdk(async (sdk) => {
+      const fw = init()
+      await sdk.inSpan('request', () => {
+        fw.agent('planner', {
+          maxLength: 8,
+          attributes: {
+            goal: { type: 'string' },
+            tag: { type: 'string', maxLength: 3 },
+            steps: { type: 'string[]' },
+            short: { type: 'string' },
+          },
+        }).set({ goal: 'find the time limit', tag: 'tenancy', steps: ['search', 'summarise'], short: 'ok' })
+      })
+      assert.deepEqual(sdk.span('request').attributes, {
+        'app.agent.planner.goal': 'find the',
+        'app.agent.planner.goal.truncated': true,
+        'app.agent.planner.tag': 'ten',
+        'app.agent.planner.tag.truncated': true,
+        'app.agent.planner.steps': ['search', 'summaris'],
+        'app.agent.planner.steps.truncated': true,
+        'app.agent.planner.short': 'ok',
+      })
+    }),
+  },
+
+  {
+    name: 'flywheel.attribute_error names each dropped key once, across writes on one span',
+    run: () => withSdk(async (sdk) => {
+      const fw = init()
+      await sdk.inSpan('request', () => {
+        const search = fw.tool('search', SEARCH_SCHEMA) as pkg.NodeHandle
+        search.set({ status: 'bad' })
+        search.set({ status: 'worse', extra: 1 })
+        search.set({ status: 'ok' })
+      })
+      const attrs = sdk.span('request').attributes
+      assert.equal(attrs['app.tool.search.status'], 'ok')
+      assert.deepEqual(attrs['flywheel.attribute_error'], ['app.tool.search.status', 'app.tool.search.extra'])
+    }),
+  },
+
+  {
+    name: 'in strict mode, an invalid write throws and writes nothing for that key',
+    run: () => withSdk(async (sdk) => {
+      const fw = init({ strict: true })
+      await sdk.inSpan('request', () => {
+        const search = fw.tool('search', SEARCH_SCHEMA) as pkg.NodeHandle
+        assert.throws(() => search.set({ status: 'timeout' }), /app\.tool\.search\.status/)
+        assert.throws(() => search.set({ raw_query: 'x' }), /app\.tool\.search\.raw_query/)
+        assert.throws(() => fw.user(''), /enduser\.id/)
+        search.set({ query: 'x'.repeat(2000) })
+      })
+      const attrs = sdk.span('request').attributes
+      assert.equal(attrs['app.tool.search.status'], undefined)
+      assert.equal(attrs['app.tool.search.query.truncated'], true)
+    }),
+  },
+
+  {
+    name: 'a rename writes the old and new names before its expiry date, and only the new name from that date',
+    run: () => withSdk(async (sdk) => {
+      const schema = {
+        attributes: {
+          time_to_first_token_ms: { type: 'number', renamedFrom: { from: 'ttft_ms', until: '2026-12-01' } },
+        },
+      } as const satisfies NodeSchema
+      await sdk.inSpan('before', () => {
+        init({ now: at('2026-11-30T23:59:59Z') }).agent('planner', schema).set({ time_to_first_token_ms: 10 })
+      })
+      await sdk.inSpan('on', () => {
+        init({ now: at('2026-12-01T00:00:00Z') }).agent('planner', schema).set({ time_to_first_token_ms: 20 })
+      })
+      assert.deepEqual(sdk.span('before').attributes, {
+        'app.agent.planner.time_to_first_token_ms': 10,
+        'app.agent.planner.ttft_ms': 10,
+      })
+      assert.deepEqual(sdk.span('on').attributes, {
+        'app.agent.planner.time_to_first_token_ms': 20,
+      })
+    }),
+  },
+
+  {
+    name: 'a rename sets <key>.truncated on both names when it cuts the value',
+    run: () => withSdk(async (sdk) => {
+      const fw = init({ now: at('2026-01-01T00:00:00Z') })
+      await sdk.inSpan('request', () => {
+        fw.agent('planner', {
+          attributes: { goal: { type: 'string', maxLength: 2, renamedFrom: { from: 'objective', until: '2026-12-01' } } },
+        }).set({ goal: 'abc' })
+      })
+      assert.deepEqual(sdk.span('request').attributes, {
+        'app.agent.planner.goal': 'ab',
+        'app.agent.planner.goal.truncated': true,
+        'app.agent.planner.objective': 'ab',
+        'app.agent.planner.objective.truncated': true,
+      })
+    }),
+  },
+
+  {
+    name: 'a schema handle infers the allowed keys and value types',
+    run: () => withSdk(async (sdk) => {
+      const fw = init()
+      await sdk.inSpan('request', () => {
+        const search = fw.tool('search', SEARCH_SCHEMA)
+        search.set({ status: 'empty', result_count: 0 })
+        // @ts-expect-error: an undeclared key is a type error
+        search.set({ raw_query: 'x' })
+        // @ts-expect-error: a value outside the enum is a type error
+        search.set({ status: 'timeout' })
+        // @ts-expect-error: a string where a count goes is a type error
+        search.set({ result_count: 'three' })
+      })
+      const attrs = sdk.span('request').attributes
+      assert.equal(attrs['app.tool.search.status'], 'empty')
+      assert.equal(attrs['app.tool.search.result_count'], 0)
+    }),
+  },
+
+  {
+    name: 'user(id) and session(id) set enduser.id and session.id on the active span',
+    run: () => withSdk(async (sdk) => {
+      const fw = init()
+      await sdk.inSpan('parent', async () => {
+        await sdk.inSpan('request', () => {
+          fw.user('u-7f3a')
+          fw.session('s-91c2')
+        })
+      })
+      assert.deepEqual(sdk.span('request').attributes, { 'enduser.id': 'u-7f3a', 'session.id': 's-91c2' })
+      assert.deepEqual(sdk.span('parent').attributes, {})
+    }),
+  },
+
+  {
+    name: 'user() and session() drop an empty or non-string id and name the key in flywheel.attribute_error',
+    run: () => withSdk(async (sdk) => {
+      const fw = init()
+      await sdk.inSpan('request', () => {
+        fw.user('')
+        fw.session(42 as unknown as string)
+      })
+      assert.deepEqual(sdk.span('request').attributes, {
+        'flywheel.attribute_error': ['enduser.id', 'session.id'],
+      })
+    }),
+  },
+
+  {
+    name: 'with no active span, schema handles, user() and session() write nothing and do not throw',
+    run: () => withSdk(async (sdk) => {
+      const fw = init({ strict: true })
+      const idle = trace.getTracer('contract').startSpan('idle')
+      ;(fw.tool('search', SEARCH_SCHEMA) as pkg.NodeHandle).set({ status: 'timeout' })
+      fw.user('u-1')
+      fw.session('s-1')
+      idle.end()
+      assert.deepEqual(sdk.span('idle').attributes, {})
+    }),
+  },
+
+  {
+    name: 'the noop instance accepts a schema, user() and session(), and writes nothing',
+    run: () => withSdk(async (sdk) => {
+      await sdk.inSpan('request', () => {
+        noopInstance.tool('search', SEARCH_SCHEMA).set({ status: 'ok' })
+        noopInstance.user('u-1')
+        noopInstance.session('s-1')
+      })
+      assert.deepEqual(sdk.span('request').attributes, {})
     }),
   },
 ]
