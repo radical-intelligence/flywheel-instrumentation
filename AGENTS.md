@@ -35,9 +35,9 @@ Provides: node handles (`tool(name)`, `model(name)`, `agent(name)`) and `set()` 
 
 Tests:
 
-- `tool(name).set writes app.tool.<name>.<key> and the legacy app.<name>.<key>`
-- `model(name).set writes app.model.<name>.<key> and the legacy app.<key>, with ttft_ms renamed`
-- `agent(name).set writes app.agent.<name>.<key> only, with no legacy key`
+- `tool(name).set writes app.tool.<name>.<key> only, with no app.<name>.<key>`
+- `model(name).set writes app.model.<name>.<key> only, with no app.<key> or app.time_to_first_token_ms`
+- `agent(name).set writes app.agent.<name>.<key> only`
 - `writes go to the active span only`
 - `getTraceId() returns the trace ID of the active span`
 - `aiSdkTelemetry() on the live instance turns AI SDK telemetry on, with inputs and outputs`
@@ -91,7 +91,7 @@ Status: Met.
 
 Rule: every attribute name follows one schema, and every product uses the same names for the same facts. Attributes carry counts and identifiers in place of free content where possible, and values have a fixed length limit.
 
-Provides: node handles prefix each key as `app.<type>.<name>.<key>`. `set()` writes keys as given. A node handle takes an optional schema as its second argument, for example `tool('search', schema)`. With no schema, a handle writes every key as given. `user(id)` and `session(id)` set `enduser.id` and `session.id` on the active span. `src/legacy.ts` also writes the old names for tool and model nodes, with or without a schema. That dual-write is past its `LEGACY_EXPIRY` (2026-09-18). It stays because saved queries still read the old names, and fls-ai-tool#409 moves them.
+Provides: node handles prefix each key as `app.<type>.<name>.<key>`. `set()` writes keys as given. A node handle takes an optional schema as its second argument, for example `tool('search', schema)`. With no schema, a handle writes every key as given. `user(id)` and `session(id)` set `enduser.id` and `session.id` on the active span. Apart from a schema rename (see Rename below), node handles write no other name. The legacy dual-write (`app.<name>.<key>` for tools, `app.<key>` for models) is removed. fls-ai-tool#411 moved the saved queries to the new names (merged into dev as 89352d2).
 
 Usage:
 
@@ -106,9 +106,8 @@ Tests:
 - `node handles keep string, number, boolean and array values as given`
 - `set writes each key as given, with no prefix and no legacy key`
 - `a later write to the same key replaces the earlier value`
-- `LEGACY_EXPIRY is 2026-09-18`
 - the three node handle cases listed under practice 1
-- `a schema handle writes declared keys as app.<type>.<name>.<key>, with the same legacy keys`
+- `a schema handle writes declared keys as app.<type>.<name>.<key> only`
 - `a schema handle drops an undeclared key and names it in flywheel.attribute_error`
 - `a schema handle drops an enum value outside the declared values and names the key`
 - `a schema handle drops a value of the wrong type, and a count that is not a non-negative integer`
@@ -124,7 +123,7 @@ Tests:
 - `with no active span, schema handles, user() and session() write nothing and do not throw`
 - `the noop instance accepts a schema, user() and session(), and writes nothing`
 
-Status: Met. The removal of the legacy dual-write waits for fls-ai-tool#409, in a follow-up PR.
+Status: Met.
 
 ### 4. Check the logging works first
 
