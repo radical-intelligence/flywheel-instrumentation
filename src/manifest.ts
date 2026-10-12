@@ -1,5 +1,6 @@
 import { schemaMaxLength } from './schema.js'
 import { PACKAGE_NAME, VERSION } from './version.js'
+export { TURN_ATTRIBUTES } from './turn.js'
 import type { AttributeSpec, InstrumentationManifest, ManifestAttribute, NodeSchemas, NodeType } from './types.js'
 
 /** The attributes the instance writes itself, with no schema. */
