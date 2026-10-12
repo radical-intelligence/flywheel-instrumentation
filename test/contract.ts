@@ -42,6 +42,14 @@ const SEARCH_SCHEMA = {
 
 const at = (iso: string) => () => Date.parse(iso)
 
+/** A clock the case moves by hand, so every offset is exact. */
+function fakeClock(start = 1000) {
+  let t = start
+  return { now: () => t, advance: (ms: number) => { t += ms } }
+}
+
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+
 export const contractCases: ContractCase[] = [
   // Must stay first. See the header.
   sync('flywheel() returns the noop instance before init()', () => {
@@ -608,6 +616,229 @@ export const contractCases: ContractCase[] = [
         noopInstance.user('u-1')
         noopInstance.session('s-1')
       })
+      assert.deepEqual(sdk.span('request').attributes, {})
+    }),
+  },
+
+  sync('a timeline records spans as offsets from its start, in start order', () => {
+    const clock = fakeClock()
+    const tl = init().createTimeline(clock.now)
+    clock.advance(5)
+    const b = tl.open('b')
+    clock.advance(10)
+    tl.close(b, { n: 1 })
+    const a = tl.open('a')
+    clock.advance(2.25)
+    tl.close(a)
+    assert.deepEqual(tl.toJSON().spans, [
+      { name: 'b', startMs: 5, endMs: 15, attrs: { n: 1 } },
+      { name: 'a', startMs: 15, endMs: 17.3 },
+    ])
+  }),
+
+  sync('a repeated span name gets a #n suffix, and a span still open is left out', () => {
+    const tl = init().createTimeline(fakeClock().now)
+    tl.close(tl.open('chat.request'))
+    tl.close(tl.open('chat.request'))
+    tl.open('never.closed')
+    assert.deepEqual(tl.toJSON().spans.map(s => s.name), ['chat.request', 'chat.request#2'])
+  }),
+
+  sync('mark keeps the first time, markLast keeps the last, and set drops a value that is not finite', () => {
+    const clock = fakeClock()
+    const tl = init().createTimeline(clock.now)
+    clock.advance(1)
+    tl.mark('first')
+    tl.markLast('last')
+    clock.advance(1)
+    tl.mark('first')
+    tl.markLast('last')
+    tl.set('tokens', 12)
+    tl.set('rate', Number.NaN)
+    assert.deepEqual(tl.toJSON().marks, { first: 1, last: 2 })
+    assert.deepEqual(tl.toJSON().usage, { tokens: 12 })
+  }),
+
+  {
+    name: 'timeline() records nothing outside a request',
+    run: async () => {
+      const fw = init()
+      const tl = fw.timeline()
+      tl.span('x')()
+      tl.mark('m')
+      tl.annotate({ a: 1 })
+      assert.equal(await tl.timed('t', () => 7), 7)
+      assert.equal(tl.scope('s', () => 8), 8)
+      assert.equal(await fw.timed('t', () => 9), 9)
+    },
+  },
+
+  {
+    name: 'timed spans take the scope as a prefix, across awaits and parallel work',
+    run: async () => {
+      const fw = init()
+      const rt = fw.createTimeline()
+      await fw.runWithTimeline(rt, async () => {
+        await Promise.all([0, 1].map(i => fw.timed(`leg.${i}`, async () => {
+          await sleep(1)
+          await fw.timeline().timed('embed', async () => {
+            fw.timeline().span('request')()
+            fw.timeline().annotate({ leg: i })
+          })
+        })))
+        fw.timeline().scope('chat', () => fw.timeline().span('request')())
+      })
+      const spans = rt.toJSON().spans
+      assert.deepEqual(spans.map(s => s.name).sort(), [
+        'chat.request',
+        'leg.0', 'leg.0.embed', 'leg.0.embed.request',
+        'leg.1', 'leg.1.embed', 'leg.1.embed.request',
+      ])
+      assert.deepEqual(spans.find(s => s.name === 'leg.1.embed')?.attrs, { leg: 1 })
+    },
+  },
+
+  {
+    name: 'a timed span closes when its work throws',
+    run: async () => {
+      const fw = init()
+      const rt = fw.createTimeline()
+      await assert.rejects(
+        fw.runWithTimeline(rt, () => fw.timed('fails', async () => { throw new Error('boom') })),
+        /boom/,
+      )
+      assert.deepEqual(rt.toJSON().spans.map(s => s.name), ['fails'])
+    },
+  },
+
+  {
+    name: 'sequential step offsets add up to the request time on a fake clock',
+    run: async () => {
+      const fw = init()
+      const clock = fakeClock()
+      const rt = fw.createTimeline(clock.now)
+      rt.startRequest()
+      await fw.runWithTimeline(rt, async () => {
+        for (const [name, ms] of [['pii', 120], ['search', 500.5], ['chat', 3000]] as const) {
+          await fw.timed(name, () => clock.advance(ms))
+        }
+      })
+      rt.endRequest()
+      const [request, ...steps] = rt.toJSON().spans
+      assert.deepEqual(request, { name: 'request', startMs: 0, endMs: 3620.5 })
+      assert.deepEqual(steps, [
+        { name: 'pii', startMs: 0, endMs: 120 },
+        { name: 'search', startMs: 120, endMs: 620.5 },
+        { name: 'chat', startMs: 620.5, endMs: 3620.5 },
+      ])
+      const sum = steps.reduce((total, s) => total + (s.endMs - s.startMs), 0)
+      assert.equal(sum, request.endMs - request.startMs)
+    },
+  },
+
+  {
+    name: 'sequential step offsets add up to the request wall-clock time on the real clock',
+    run: async () => {
+      const fw = init()
+      const before = performance.now()
+      const rt = fw.createTimeline()
+      rt.startRequest()
+      await fw.runWithTimeline(rt, async () => {
+        for (const name of ['pii', 'search', 'chat']) await fw.timed(name, () => sleep(5))
+      })
+      rt.endRequest()
+      const wall = performance.now() - before
+      const [request, ...steps] = rt.toJSON().spans
+      assert.equal(request.name, 'request')
+      assert.equal(request.startMs, 0)
+      assert.deepEqual(steps.map(s => s.name), ['pii', 'search', 'chat'])
+      for (let i = 1; i < steps.length; i++) assert.ok(steps[i].startMs >= steps[i - 1].endMs)
+      const sum = steps.reduce((total, s) => total + (s.endMs - s.startMs), 0)
+      // Each offset rounds to 0.1 ms, and a few microseconds pass between steps.
+      assert.ok(Math.abs(request.endMs - sum) <= 1, `request ${request.endMs} ms, steps ${sum} ms`)
+      assert.ok(request.endMs <= wall + 0.1, `request ${request.endMs} ms, wall clock ${wall} ms`)
+    },
+  },
+
+  sync('recordUsage records token counts and output tokens per second over the visible stream', () => {
+    const fw = init()
+    const rt = fw.createTimeline()
+    fw.runWithTimeline(rt, () => fw.recordUsage(fw.timeline(), {
+      inputTokens: 5000,
+      outputTokens: 700,
+      inputTokenDetails: { cacheReadTokens: 1024 },
+      outputTokenDetails: { reasoningTokens: 200 },
+    }, { 'chat.firstText': 1000, 'chat.tool.analysis_data.inputStart': 1500, 'chat.lastToken': 3000 }))
+    assert.deepEqual(rt.toJSON().usage, {
+      inputTokens: 5000,
+      outputTokens: 700,
+      reasoningTokens: 200,
+      cachedInputTokens: 1024,
+      // 500 visible tokens over 2 seconds.
+      outputTokensPerSecond: 250,
+    })
+  }),
+
+  sync('recordUsage leaves out the rate when no visible token was marked', () => {
+    const fw = init()
+    const rt = fw.createTimeline()
+    fw.runWithTimeline(rt, () => fw.recordUsage(fw.timeline(), { inputTokens: 10, outputTokens: 0 }, {}))
+    assert.deepEqual(rt.toJSON().usage, { inputTokens: 10, outputTokens: 0 })
+  }),
+
+  sync('timelineAttributes flattens the timeline into app.timeline.* attributes', () => {
+    assert.deepEqual(init().timelineAttributes({
+      spans: [{ name: 'search.leg.0.azure', startMs: 100, endMs: 350.5, attrs: { elapsedTimeMs: 98, semanticRanker: true } }],
+      marks: { 'chat.firstText': 2100 },
+      usage: { outputTokens: 700 },
+    }), {
+      'app.timeline.search.leg.0.azure.start_ms': 100,
+      'app.timeline.search.leg.0.azure.ms': 250.5,
+      'app.timeline.search.leg.0.azure.attr.elapsedTimeMs': 98,
+      'app.timeline.search.leg.0.azure.attr.semanticRanker': true,
+      'app.timeline.mark.chat.firstText': 2100,
+      'app.timeline.usage.outputTokens': 700,
+    })
+  }),
+
+  {
+    name: 'the response payload and the request span hold the same timeline',
+    run: () => withSdk(async (sdk) => {
+      const fw = init()
+      const clock = fakeClock()
+      const rt = fw.createTimeline(clock.now)
+      let payload: ReturnType<typeof rt.toJSON> | undefined
+      await sdk.inSpan('request', async () => {
+        await fw.runWithTimeline(rt, async () => {
+          await fw.timed('search', () => clock.advance(40))
+          fw.timeline().mark('respond.firstText')
+        })
+        payload = rt.toJSON()
+        fw.set(fw.timelineAttributes(payload))
+      })
+      assert.deepEqual(payload, {
+        spans: [{ name: 'search', startMs: 0, endMs: 40 }],
+        marks: { 'respond.firstText': 40 },
+        usage: {},
+      })
+      assert.deepEqual(sdk.span('request').attributes, {
+        'app.timeline.search.start_ms': 0,
+        'app.timeline.search.ms': 40,
+        'app.timeline.mark.respond.firstText': 40,
+      })
+    }),
+  },
+
+  {
+    name: 'the noop instance keeps the clock, and writes no attributes',
+    run: () => withSdk(async (sdk) => {
+      const clock = fakeClock()
+      const rt = noopInstance.createTimeline(clock.now)
+      await sdk.inSpan('request', async () => {
+        await noopInstance.runWithTimeline(rt, () => noopInstance.timed('search', () => clock.advance(10)))
+        noopInstance.set(noopInstance.timelineAttributes(rt.toJSON()))
+      })
+      assert.deepEqual(rt.toJSON().spans, [{ name: 'search', startMs: 0, endMs: 10 }])
       assert.deepEqual(sdk.span('request').attributes, {})
     }),
   },

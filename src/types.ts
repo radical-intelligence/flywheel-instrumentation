@@ -1,4 +1,5 @@
 import type { AttributeValue } from '@opentelemetry/api'
+import type { RequestTimeline, SpanAttrs, Timeline, TimelinePayload, UsageLike } from './timeline.js'
 
 export type NodeType = 'tool' | 'model' | 'agent'
 
@@ -71,6 +72,18 @@ export interface FlywheelInstance {
   getTraceId(): string | undefined
   aiSdkTelemetry(options?: AiSdkTelemetryOptions): AiSdkTelemetryConfig
   flush(): Promise<void>
+  /** A new request clock. It starts now, or at `clock()` when given. */
+  createTimeline(clock?: () => number): RequestTimeline
+  /** The current request's timeline, or a handle that records nothing. */
+  timeline(): Timeline
+  /** Run `fn` with `tl` as the current timeline, at the root scope. */
+  runWithTimeline<T>(tl: RequestTimeline, fn: () => T): T
+  /** Record `fn` as a span on the current timeline. */
+  timed<T>(name: string, fn: (tl: Timeline) => Promise<T> | T, attrs?: SpanAttrs): Promise<T>
+  /** Record token usage and the visible output rate on `tl`. */
+  recordUsage(tl: Timeline, usage: UsageLike, marks: Record<string, number>): void
+  /** The timeline as flat `app.timeline.*` span attributes. */
+  timelineAttributes(payload: TimelinePayload): SpanAttrs
 }
 
 export interface AiSdkTelemetryOptions {
