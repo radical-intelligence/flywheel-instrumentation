@@ -1,0 +1,44 @@
+{
+  "name": "@radical-intelligence/flywheel-instrumentation",
+  "version": "0.1.0",
+  "description": "OpenTelemetry instrumentation for products that the Flywheel analyses",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/radical-intelligence/flywheel-instrumentation.git"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "AGENTS.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.test.json",
+    "test": "node --import tsx --test test/contract.test.ts",
+    "prepare": "npm run build"
+  },
+  "peerDependencies": {
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/api-logs": ">=0.208.0 <1.0.0"
+  },
+  "devDependencies": {
+    "@opentelemetry/api": "1.9.1",
+    "@opentelemetry/api-logs": "0.220.0",
+    "@opentelemetry/context-async-hooks": "2.7.1",
+    "@opentelemetry/sdk-logs": "0.220.0",
+    "@opentelemetry/sdk-trace-base": "2.7.1",
+    "@types/node": "25.9.5",
+    "tsx": "4.23.12",
+    "typescript": "6.0.3"
+  }
+}
