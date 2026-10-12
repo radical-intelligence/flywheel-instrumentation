@@ -54,6 +54,12 @@ export interface InitOptions {
   strict?: boolean
   /** The clock for renames, in milliseconds since the epoch. The default is `Date.now`. */
   now?: () => number
+  /**
+   * Also emit each feedback event as a log record named by
+   * `microsoft.custom_event.name`, which the Azure Monitor exporter writes
+   * to `customEvents`. Default false.
+   */
+  azureCustomEvents?: boolean
 }
 
 export interface FlywheelInstance {
@@ -68,8 +74,13 @@ export interface FlywheelInstance {
   user(id: string): void
   /** Sets `session.id` on the active span. The id must be opaque, not personal data. */
   session(id: string): void
+  /** @deprecated Use `feedback()`. It writes a span on the turn's trace, which Langfuse also ingests. */
   metadata(traceId: string, eventName: string, attrs: Record<string, AttributeValue>): void
   getTraceId(): string | undefined
+  /** The trace ID and span ID of the active span. Store it with the response, so later feedback can name the turn. */
+  turnRef(): TurnRef | undefined
+  /** Write one feedback event as a span, parented to the turn span that `event.turn` names. */
+  feedback(event: FeedbackEvent): void
   aiSdkTelemetry(options?: AiSdkTelemetryOptions): AiSdkTelemetryConfig
   flush(): Promise<void>
   /** A new request clock. It starts now, or at `clock()` when given. */
@@ -98,3 +109,71 @@ export interface AiSdkTelemetryConfig {
   recordOutputs: boolean
   metadata: Record<string, string>
 }
+
+/** The turn a piece of feedback rates: the trace ID and span ID of the turn span. */
+export interface TurnRef {
+  traceId: string
+  spanId: string
+}
+
+/** The ADR 005 class of an event. `explicit` is a rating the person gave. */
+export type FeedbackClass = 'explicit' | 'decision' | 'ui' | 'conversation'
+
+export interface FeedbackBase {
+  /** The span name and `event.name`. Default `feedback.<kind>`. */
+  name?: string
+  /** The turn the event rates. With no valid ref, the event joins the session's trace. */
+  turn?: TurnRef
+  /** The session the event happened in. Default: one session per process. */
+  session?: string
+  /** When the event happened. Default: now. */
+  at?: Date | string
+  /** What the event is about, in the product's own words. */
+  subject?: { kind: string, id?: string, url?: string }
+  /** Who acted. */
+  actor?: { id: string, kind: 'person' | 'agent' | 'bot' }
+  /** The prefix of every typed attribute. Default `feedback`. */
+  namespace?: string
+  /** Written as given, after the typed attributes. */
+  attributes?: Record<string, AttributeValue>
+}
+
+export interface RatingFeedback extends FeedbackBase {
+  kind: 'rating'
+  rating?: string | number
+  /** One score per criterion, written as `<namespace>.rating.<criterion>`. */
+  ratings?: Record<string, number>
+  reason?: string
+  reasons?: string[]
+  comment?: string
+}
+
+export interface DecisionFeedback extends FeedbackBase {
+  kind: 'decision'
+  /** For example approve, reject, archive or pin. */
+  decision: string
+  reason?: string
+}
+
+export interface EditFeedback extends FeedbackBase {
+  kind: 'edit'
+  /** The product's draft, kept beside the edit. */
+  draft?: string
+  /** The text after the person's edit. */
+  text: string
+}
+
+export interface DwellFeedback extends FeedbackBase {
+  kind: 'dwell'
+  /** The stable id of the element. */
+  element: string
+  dwellMs: number
+}
+
+export interface NextMessageFeedback extends FeedbackBase {
+  kind: 'next_message'
+  /** The person's next message after the turn. */
+  text: string
+}
+
+export type FeedbackEvent = RatingFeedback | DecisionFeedback | EditFeedback | DwellFeedback | NextMessageFeedback

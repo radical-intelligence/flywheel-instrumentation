@@ -3,11 +3,15 @@ import type { AttributeValue } from '@opentelemetry/api'
 import { createNodeHandle, createSchemaNodeHandle } from './node.js'
 import { emitMetadata } from './metadata.js'
 import { clockMethods } from './timeline.js'
+import { activeTurnRef, emitFeedback } from './feedback.js'
 import { reportInvalid, writeSettings } from './schema.js'
-import type { FlywheelInstance, NodeHandle, NodeSchema, NodeType, InitOptions, AiSdkTelemetryConfig, AiSdkTelemetryOptions } from './types.js'
+import type {
+  FlywheelInstance, NodeHandle, NodeSchema, NodeType, InitOptions, AiSdkTelemetryConfig, AiSdkTelemetryOptions, FeedbackEvent,
+} from './types.js'
 
 export function createInstance(options?: InitOptions): FlywheelInstance {
   const settings = writeSettings(options)
+  const customEvents = options?.azureCustomEvents ?? false
 
   // The overloads in types.ts give a schema handle its typed keys.
   const handle = (type: NodeType, name: string, schema?: NodeSchema): NodeHandle<any> =>
@@ -58,6 +62,14 @@ export function createInstance(options?: InitOptions): FlywheelInstance {
 
     getTraceId(): string | undefined {
       return trace.getActiveSpan()?.spanContext()?.traceId
+    },
+
+    turnRef() {
+      return activeTurnRef()
+    },
+
+    feedback(event: FeedbackEvent) {
+      emitFeedback(event, customEvents)
     },
 
     aiSdkTelemetry(options?: AiSdkTelemetryOptions): AiSdkTelemetryConfig {
