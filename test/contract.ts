@@ -17,6 +17,9 @@ import { SeverityNumber } from '@opentelemetry/api-logs'
 import * as pkg from '../src/index.js'
 import { init, flywheel, noopInstance, LEGACY_EXPIRY } from '../src/index.js'
 import type { NodeSchema } from '../src/index.js'
+import { recordStreamPart } from '../src/ai-sdk.js'
+import { requestTimeline, startTimeline, timedMiddleware } from '../src/express.js'
+import type { NextFunction, Request, RequestHandler, Response } from 'express'
 import { withSdk } from './sdk.js'
 
 export interface ContractCase {
@@ -49,6 +52,10 @@ function fakeClock(start = 1000) {
 }
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+
+/** The part of an Express response that the middleware reads. */
+const fakeResponse = () => ({ locals: {} }) as unknown as Response
+const fakeRequest = {} as Request
 
 export const contractCases: ContractCase[] = [
   // Must stay first. See the header.
@@ -759,6 +766,90 @@ export const contractCases: ContractCase[] = [
       assert.ok(request.endMs <= wall + 0.1, `request ${request.endMs} ms, wall clock ${wall} ms`)
     },
   },
+
+  sync('startTimeline starts the clock, and timedMiddleware times a middleware and restores the timeline in next', () => {
+    const response = fakeResponse()
+    let seen: ReturnType<typeof requestTimeline>
+    // A body parser calls next from a stream callback, outside the context.
+    const detached: RequestHandler = (_req, _res, next) => { next() }
+    startTimeline(fakeRequest, response, () => {
+      timedMiddleware('middleware.json', detached)(fakeRequest, response, (() => {
+        init().timeline().span('handler')()
+        seen = requestTimeline(response)
+      }) as NextFunction)
+    })
+    assert.ok(seen)
+    assert.deepEqual(seen.toJSON().spans.map(s => s.name), ['middleware.json', 'handler'])
+  }),
+
+  sync('startTimeline opens a request span at zero that closes on endRequest, once', () => {
+    const response = fakeResponse()
+    startTimeline(fakeRequest, response, () => {
+      init().timeline().span('respond.done')()
+    })
+    const rt = requestTimeline(response)
+    assert.ok(rt)
+    assert.deepEqual(rt.toJSON().spans.map(s => s.name), ['respond.done'])
+    rt.endRequest()
+    const [request, done] = rt.toJSON().spans
+    rt.endRequest()
+    assert.deepEqual(rt.toJSON().spans[0], request)
+    assert.equal(request.name, 'request')
+    assert.equal(request.startMs, 0)
+    assert.ok(request.endMs >= done.endMs)
+  }),
+
+  sync('timedMiddleware passes a middleware error to next', () => {
+    const response = fakeResponse()
+    let got: unknown
+    startTimeline(fakeRequest, response, () => {
+      timedMiddleware('m', (_q, _s, next) => next(new Error('bad')))(
+        fakeRequest, response, ((err: unknown) => { got = err }) as NextFunction,
+      )
+    })
+    assert.ok(got instanceof Error)
+  }),
+
+  sync('timedMiddleware runs the middleware untimed when no timeline is attached', () => {
+    let called = false
+    timedMiddleware('m', (_q, _s, next) => next())(fakeRequest, fakeResponse(), (() => { called = true }) as NextFunction)
+    assert.equal(called, true)
+  }),
+
+  sync('recordStreamPart marks the first chunk, first text, reasoning, the tool input window and the last token', () => {
+    const fw = init()
+    const clock = fakeClock(0)
+    const rt = fw.createTimeline(clock.now)
+    const tools = new Map<string, string>()
+    const parts = [
+      { type: 'start' },
+      { type: 'start-step' },
+      { type: 'reasoning-start' },
+      { type: 'reasoning-delta' },
+      { type: 'reasoning-end' },
+      { type: 'text-delta' },
+      { type: 'text-delta' },
+      { type: 'tool-input-start', id: 't1', toolName: 'analysis_data' },
+      { type: 'tool-input-delta', id: 't1' },
+      { type: 'tool-input-end', id: 't1' },
+      { type: 'tool-call', toolName: 'analysis_data' },
+    ]
+    fw.runWithTimeline(rt, () => {
+      for (const part of parts) {
+        clock.advance(10)
+        recordStreamPart(fw.timeline(), part, tools)
+      }
+    })
+    assert.deepEqual(rt.toJSON().marks, {
+      'chat.firstChunk': 30,
+      'chat.reasoning.start': 30,
+      'chat.reasoning.end': 50,
+      'chat.firstText': 60,
+      'chat.lastToken': 90,
+      'chat.tool.analysis_data.inputStart': 80,
+      'chat.tool.analysis_data.inputEnd': 100,
+    })
+  }),
 
   sync('recordUsage records token counts and output tokens per second over the visible stream', () => {
     const fw = init()
