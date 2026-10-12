@@ -21,7 +21,7 @@ To initialise it:
 2. Call `init()` once, after the providers exist. It returns the live instance.
 3. Everywhere else, call `flywheel()`. Before `init()`, it returns a noop instance that writes nothing.
 
-The public API is in `src/index.ts`, and the types are in `src/types.ts`.
+The public API is in `src/index.ts`, and the types are in `src/types.ts`. The subpath exports are in `src/express.ts` and `src/ai-sdk.ts` (see practice 2).
 
 ## Practices
 
@@ -48,11 +48,44 @@ Status: Partial. PR 4 (turn record) closes it.
 
 Rule: every timing in a request comes from one clock that starts when the request arrives. Each step records its offset from that start.
 
-Provides: nothing. The product measures its own timings. FLS keeps its clock in `apps/server/timeline.ts` in fls-ai-tool.
+Provides: a request timeline on one monotonic clock (`src/timeline.ts`). The timeline is kept in AsyncLocalStorage, so code deep in the call stack records spans with no extra parameters. Both instances (live and noop) carry the clock methods, because the clock writes no telemetry:
 
-Tests: none.
+- `createTimeline(clock?)` returns a `RequestTimeline`. It starts at `performance.now()`, or at `clock()` when given.
+- `runWithTimeline(tl, fn)` makes `tl` the current timeline for `fn`.
+- `timeline()` returns the current timeline handle (`span`, `timed`, `scope`, `annotate`, `mark`, `markLast`, `set`). Outside a timeline, the handle records nothing.
+- `timed(name, fn, attrs?)` records `fn` as a span. Every span inside `fn` takes `name` as a prefix.
+- `recordUsage(tl, usage, marks)` records token counts and the visible output rate.
+- `timelineAttributes(payload)` flattens `RequestTimeline.toJSON()` into `app.timeline.*` attributes. Pass the result to `set()`, so the response and the request span hold the same timeline.
 
-Status: Not yet. PR 2 (clock) closes it.
+Two subpath exports hold the parts that depend on another library. Each library is an optional peer dependency:
+
+- `@radical-intelligence/flywheel-instrumentation/express` (`src/express.ts`): `startTimeline` is the first middleware. It starts the clock and opens the `request` span. `timedMiddleware(name, mw)` records a middleware as a span. `requestTimeline(res)` returns the timeline for the response. Call `endRequest()` on it after the last write.
+- `@radical-intelligence/flywheel-instrumentation/ai-sdk` (`src/ai-sdk.ts`): `recordStreamPart(tl, part, toolNames)` marks the first chunk, the first text, reasoning, each tool input window and the last token. It reads the AI SDK 5 stream part names.
+
+The legacy timing fields and the SSE `timings` frame stay in FLS (`apps/server/timeline.ts` in fls-ai-tool).
+
+Tests:
+
+- `a timeline records spans as offsets from its start, in start order`
+- `a repeated span name gets a #n suffix, and a span still open is left out`
+- `mark keeps the first time, markLast keeps the last, and set drops a value that is not finite`
+- `timeline() records nothing outside a request`
+- `timed spans take the scope as a prefix, across awaits and parallel work`
+- `a timed span closes when its work throws`
+- `sequential step offsets add up to the request time on a fake clock`
+- `sequential step offsets add up to the request wall-clock time on the real clock`
+- `startTimeline starts the clock, and timedMiddleware times a middleware and restores the timeline in next`
+- `startTimeline opens a request span at zero that closes on endRequest, once`
+- `timedMiddleware passes a middleware error to next`
+- `timedMiddleware runs the middleware untimed when no timeline is attached`
+- `recordStreamPart marks the first chunk, first text, reasoning, the tool input window and the last token`
+- `recordUsage records token counts and output tokens per second over the visible stream`
+- `recordUsage leaves out the rate when no visible token was marked`
+- `timelineAttributes flattens the timeline into app.timeline.* attributes`
+- `the response payload and the request span hold the same timeline`
+- `the noop instance keeps the clock, and writes no attributes`
+
+Status: Met.
 
 ### 3. Consistent span attributes
 
