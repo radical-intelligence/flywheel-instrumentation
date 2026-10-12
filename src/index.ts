@@ -13,6 +13,15 @@ export type {
   InitOptions,
   AiSdkTelemetryOptions,
   AiSdkTelemetryConfig,
+  TurnRef,
+  FeedbackClass,
+  FeedbackBase,
+  FeedbackEvent,
+  RatingFeedback,
+  DecisionFeedback,
+  EditFeedback,
+  DwellFeedback,
+  NextMessageFeedback,
 } from './types.js'
 export type {
   RequestTimeline,

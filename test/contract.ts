@@ -12,15 +12,16 @@
  * any `init()` must run first, in a fresh module instance.
  */
 import assert from 'node:assert/strict'
-import { trace, TraceFlags } from '@opentelemetry/api'
+import { trace, SpanKind, TraceFlags } from '@opentelemetry/api'
 import { SeverityNumber } from '@opentelemetry/api-logs'
 import * as pkg from '../src/index.js'
 import { init, flywheel, noopInstance, LEGACY_EXPIRY } from '../src/index.js'
-import type { NodeSchema } from '../src/index.js'
+import type { NodeSchema, TurnRef } from '../src/index.js'
 import { recordStreamPart } from '../src/ai-sdk.js'
 import { requestTimeline, startTimeline, timedMiddleware } from '../src/express.js'
 import type { NextFunction, Request, RequestHandler, Response } from 'express'
 import { withSdk } from './sdk.js'
+import type { Sdk } from './sdk.js'
 
 export interface ContractCase {
   name: string
@@ -28,6 +29,15 @@ export interface ContractCase {
 }
 
 const TRACE_ID = '0af7651916cd43dd8448eb211c80319c'
+
+const TURN: TurnRef = { traceId: TRACE_ID, spanId: 'b7ad6b7169203331' }
+
+/** Run a turn span, and return its ref as the turn saw it. */
+async function turn(sdk: Sdk, fw: ReturnType<typeof init>): Promise<TurnRef> {
+  const ref = await sdk.inSpan('turn', () => fw.turnRef())
+  assert.ok(ref)
+  return ref
+}
 
 const sync = (name: string, fn: () => void): ContractCase => ({ name, run: async () => fn() })
 
@@ -931,6 +941,232 @@ export const contractCases: ContractCase[] = [
       })
       assert.deepEqual(rt.toJSON().spans, [{ name: 'search', startMs: 0, endMs: 10 }])
       assert.deepEqual(sdk.span('request').attributes, {})
+    }),
+  },
+
+  {
+    name: 'turnRef() returns the trace ID and span ID of the active span',
+    run: () => withSdk(async (sdk) => {
+      const fw = init()
+      let ref: TurnRef | undefined
+      await sdk.inSpan('request', () => { ref = fw.turnRef() })
+      const ctx = sdk.span('request').spanContext()
+      assert.deepEqual(ref, { traceId: ctx.traceId, spanId: ctx.spanId })
+    }),
+  },
+
+  {
+    name: 'turnRef() is undefined with no active span',
+    run: () => withSdk(async () => {
+      assert.equal(init().turnRef(), undefined)
+    }),
+  },
+
+  {
+    name: 'feedback joins its turn\'s trace as a child of the turn span',
+    run: () => withSdk(async (sdk) => {
+      const fw = init()
+      const ref = await turn(sdk, fw)
+      fw.feedback({ kind: 'rating', name: 'user_feedback', turn: ref, rating: 'up' })
+      const span = sdk.span('user_feedback')
+      assert.equal(span.spanContext().traceId, ref.traceId)
+      assert.equal(span.parentSpanContext?.spanId, ref.spanId)
+      assert.equal(span.parentSpanContext?.spanId, sdk.span('turn').spanContext().spanId)
+      assert.equal(span.kind, SpanKind.INTERNAL)
+      assert.equal(span.instrumentationScope.name, 'flywheel')
+    }),
+  },
+
+  {
+    name: 'feedback joins its turn, not the span active when it is written',
+    run: () => withSdk(async (sdk) => {
+      const fw = init()
+      await sdk.inSpan('feedback-request', () => {
+        fw.feedback({ kind: 'rating', name: 'user_feedback', turn: TURN, rating: 'down' })
+      })
+      const span = sdk.span('user_feedback')
+      assert.equal(span.spanContext().traceId, TURN.traceId)
+      assert.equal(span.parentSpanContext?.spanId, TURN.spanId)
+      assert.deepEqual(sdk.span('feedback-request').attributes, {})
+    }),
+  },
+
+  {
+    name: 'a rating writes event.name and the feedback.* attributes FLS queries read',
+    run: () => withSdk(async (sdk) => {
+      const fw = init()
+      fw.feedback({
+        kind: 'rating', name: 'user_feedback', turn: TURN, session: 's1',
+        rating: 'down', reason: 'wrong', reasons: ['wrong', 'slow'], comment: 'no',
+        subject: { kind: 'answer', id: 'a1' }, actor: { id: 'u1', kind: 'person' },
+        attributes: { 'app.audience': 'staff' },
+      })
+      assert.deepEqual(sdk.span('user_feedback').attributes, {
+        'event.name': 'user_feedback',
+        'feedback.kind': 'rating',
+        'feedback.class': 'explicit',
+        'feedback.session': 's1',
+        'feedback.rating': 'down',
+        'feedback.reason': 'wrong',
+        'feedback.reasons': 'wrong,slow',
+        'feedback.comment': 'no',
+        'feedback.subject.kind': 'answer',
+        'feedback.subject.id': 'a1',
+        'feedback.actor.id': 'u1',
+        'feedback.actor.kind': 'person',
+        'app.audience': 'staff',
+      })
+    }),
+  },
+
+  {
+    name: 'namespace writes the typed attributes under its prefix, so tester ratings keep tester.*',
+    run: () => withSdk(async (sdk) => {
+      const fw = init()
+      fw.feedback({
+        kind: 'rating', name: 'tester_feedback', turn: TURN, session: 's1', namespace: 'tester',
+        ratings: { faithfulness: 4, relevance: 5 }, comment: 'ok',
+        attributes: { 'tester.question': 'q' },
+      })
+      assert.deepEqual(sdk.span('tester_feedback').attributes, {
+        'event.name': 'tester_feedback',
+        'tester.kind': 'rating',
+        'tester.class': 'explicit',
+        'tester.session': 's1',
+        'tester.rating.faithfulness': 4,
+        'tester.rating.relevance': 5,
+        'tester.comment': 'ok',
+        'tester.question': 'q',
+      })
+    }),
+  },
+
+  {
+    name: 'each behaviour signal writes its kind, its ADR 005 class and its typed attributes',
+    run: () => withSdk(async (sdk) => {
+      const fw = init()
+      const base = { turn: TURN, session: 's1' }
+      fw.feedback({ ...base, kind: 'decision', decision: 'reject', reason: 'off-topic' })
+      fw.feedback({ ...base, kind: 'edit', draft: 'agent text', text: 'person text' })
+      fw.feedback({ ...base, kind: 'dwell', element: 'sources', dwellMs: 1500 })
+      fw.feedback({ ...base, kind: 'next_message', text: 'that is wrong' })
+      const common = (kind: string, cls: string) => ({
+        'event.name': `feedback.${kind}`, 'feedback.kind': kind, 'feedback.class': cls, 'feedback.session': 's1',
+      })
+      assert.deepEqual(sdk.span('feedback.decision').attributes, {
+        ...common('decision', 'decision'), 'feedback.decision': 'reject', 'feedback.reason': 'off-topic',
+      })
+      assert.deepEqual(sdk.span('feedback.edit').attributes, {
+        ...common('edit', 'decision'), 'feedback.edit.draft': 'agent text', 'feedback.edit.text': 'person text',
+      })
+      assert.deepEqual(sdk.span('feedback.dwell').attributes, {
+        ...common('dwell', 'ui'), 'feedback.element': 'sources', 'feedback.dwell_ms': 1500,
+      })
+      assert.deepEqual(sdk.span('feedback.next_message').attributes, {
+        ...common('next_message', 'conversation'), 'feedback.next_message': 'that is wrong',
+      })
+    }),
+  },
+
+  {
+    name: 'an attribute cannot replace event.name',
+    run: () => withSdk(async (sdk) => {
+      const fw = init()
+      fw.feedback({ kind: 'rating', name: 'user_feedback', turn: TURN, rating: 'up', attributes: { 'event.name': 'other' } })
+      assert.equal(sdk.span('user_feedback').attributes['event.name'], 'user_feedback')
+    }),
+  },
+
+  {
+    name: 'feedback with no turn ref joins one trace per session, the same for every event in it',
+    run: () => withSdk(async (sdk) => {
+      const fw = init()
+      fw.feedback({ kind: 'dwell', name: 'a', session: 's1', element: 'x', dwellMs: 1 })
+      fw.feedback({ kind: 'dwell', name: 'b', session: 's1', element: 'y', dwellMs: 2 })
+      fw.feedback({ kind: 'dwell', name: 'c', session: 's2', element: 'x', dwellMs: 1 })
+      const [a, b, c] = ['a', 'b', 'c'].map(n => sdk.span(n))
+      assert.match(a.spanContext().traceId, /^[0-9a-f]{32}$/)
+      assert.equal(a.spanContext().traceId, b.spanContext().traceId)
+      assert.equal(a.parentSpanContext?.spanId, b.parentSpanContext?.spanId)
+      assert.notEqual(a.spanContext().traceId, c.spanContext().traceId)
+      assert.equal(a.attributes['feedback.session'], 's1')
+    }),
+  },
+
+  {
+    name: 'feedback with an invalid turn ref joins its session\'s trace',
+    run: () => withSdk(async (sdk) => {
+      const fw = init()
+      fw.feedback({ kind: 'rating', name: 'bad', session: 's1', turn: { traceId: 'nope', spanId: 'nope' }, rating: 'up' })
+      fw.feedback({ kind: 'rating', name: 'none', session: 's1', rating: 'up' })
+      assert.equal(sdk.span('bad').spanContext().traceId, sdk.span('none').spanContext().traceId)
+    }),
+  },
+
+  {
+    name: 'feedback with no turn ref and no session joins one trace for the process',
+    run: () => withSdk(async (sdk) => {
+      const fw = init()
+      fw.feedback({ kind: 'rating', name: 'a', rating: 'up' })
+      fw.feedback({ kind: 'rating', name: 'b', rating: 'up' })
+      const a = sdk.span('a')
+      assert.equal(a.spanContext().traceId, sdk.span('b').spanContext().traceId)
+      assert.match(String(a.attributes['feedback.session']), /^process-[0-9a-f]{8}$/)
+    }),
+  },
+
+  {
+    name: 'feedback starts and ends its span at the at time',
+    run: () => withSdk(async (sdk) => {
+      const fw = init()
+      const at = '2026-10-01T00:00:00.000Z'
+      fw.feedback({ kind: 'rating', name: 'user_feedback', turn: TURN, rating: 'up', at })
+      const span = sdk.span('user_feedback')
+      const ms = Date.parse(at)
+      assert.deepEqual(span.startTime, [Math.floor(ms / 1000), (ms % 1000) * 1e6])
+      assert.deepEqual(span.endTime, span.startTime)
+    }),
+  },
+
+  {
+    name: 'feedback writes no log record by default',
+    run: () => withSdk(async (sdk) => {
+      const fw = init()
+      fw.feedback({ kind: 'rating', name: 'user_feedback', turn: TURN, rating: 'up' })
+      assert.equal(sdk.spans().length, 1)
+      assert.equal(sdk.logRecords().length, 0)
+    }),
+  },
+
+  {
+    name: 'with azureCustomEvents, feedback also emits a log record named by microsoft.custom_event.name, in the feedback span',
+    run: () => withSdk(async (sdk) => {
+      const fw = init({ azureCustomEvents: true })
+      fw.feedback({ kind: 'rating', name: 'user_feedback', turn: TURN, session: 's1', rating: 'down' })
+      const span = sdk.span('user_feedback')
+      const records = sdk.logRecords()
+      assert.equal(records.length, 1)
+      const [record] = records
+      assert.deepEqual(record.attributes, { ...span.attributes, 'microsoft.custom_event.name': 'user_feedback' })
+      assert.equal(record.spanContext?.traceId, TURN.traceId)
+      assert.equal(record.spanContext?.spanId, span.spanContext().spanId)
+      assert.equal(record.severityNumber, SeverityNumber.INFO)
+      assert.equal(record.instrumentationScope.name, 'flywheel')
+      assert.deepEqual(record.hrTime, span.startTime)
+    }),
+  },
+
+  {
+    name: 'the noop instance drops feedback, and its turnRef() is undefined',
+    run: () => withSdk(async (sdk) => {
+      let ref: TurnRef | undefined = TURN
+      await sdk.inSpan('request', () => {
+        noopInstance.feedback({ kind: 'rating', name: 'user_feedback', turn: TURN, rating: 'up' })
+        ref = noopInstance.turnRef()
+      })
+      assert.equal(ref, undefined)
+      assert.deepEqual(sdk.spans().map(s => s.name), ['request'])
+      assert.equal(sdk.logRecords().length, 0)
     }),
   },
 ]

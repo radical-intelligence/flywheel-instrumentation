@@ -14,6 +14,8 @@ export const noopInstance: FlywheelInstance = {
   session() {},
   metadata() {},
   getTraceId() { return undefined },
+  turnRef() { return undefined },
+  feedback() {},
   aiSdkTelemetry(options?: AiSdkTelemetryOptions): AiSdkTelemetryConfig {
     return {
       isEnabled: false,
