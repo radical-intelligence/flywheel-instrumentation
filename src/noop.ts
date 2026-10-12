@@ -2,6 +2,7 @@ import { clockMethods } from './timeline.js'
 import { buildManifest } from './manifest.js'
 import { DEFAULT_ATTRIBUTE_COUNT_LIMIT, DEFAULT_VALUE_SIZE_LIMIT } from './selfCheck.js'
 import type { FlywheelInstance, NodeHandle, AiSdkTelemetryConfig, AiSdkTelemetryOptions, SelfCheckReport } from './types.js'
+import { runNoopTurn } from './turn.js'
 
 const noopHandle: NodeHandle<any> = {
   set() {},
@@ -44,6 +45,7 @@ export const noopInstance: FlywheelInstance = {
   manifest() {
     return { ...buildManifest(), attributes: [] }
   },
+  turn: runNoopTurn,
   // The clock writes no telemetry, so the noop instance keeps it.
   ...clockMethods,
 }

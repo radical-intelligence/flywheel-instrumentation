@@ -1,5 +1,6 @@
 import type { AttributeValue } from '@opentelemetry/api'
 import type { RequestTimeline, SpanAttrs, Timeline, TimelinePayload, UsageLike } from './timeline.js'
+import type { Turn, TurnOptions } from './turn.js'
 
 export type NodeType = 'tool' | 'model' | 'agent'
 
@@ -173,6 +174,12 @@ export interface FlywheelInstance {
   selfCheck(): SelfCheckReport
   /** Every attribute name that the declared schemas and the registered modules can write. */
   manifest(): InstrumentationManifest
+  /**
+   * Run `fn` as one turn, under a root span named `invoke_agent {agent}`.
+   * `fn` fills `turn.record`, which goes on the span when `fn` settles. An
+   * error from `fn` sets the outcome and the span status, and is rethrown.
+   */
+  turn<T>(options: TurnOptions, fn: (turn: Turn) => T | Promise<T>): Promise<T>
 }
 
 export interface AiSdkTelemetryOptions {

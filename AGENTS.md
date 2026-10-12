@@ -31,10 +31,38 @@ The blueprint "Observability for agentic systems" has seven practices. Each rule
 
 Rule: each turn produces one record that holds its input, output, steps and timings. A reader can rebuild the turn from that record alone.
 
-Provides: node handles (`tool(name)`, `model(name)`, `agent(name)`) and `set()` write to the active span. `getTraceId()` returns the trace that identifies the turn. `aiSdkTelemetry()` returns the AI SDK telemetry settings, so model calls join the same trace. There is no turn record type.
+Provides: `turn(options, fn)` opens the turn's root span and runs `fn` with that span active (`src/turn.ts`). Model calls inside `fn` become its children: AI SDK spans through `aiSdkTelemetry()`, or manual spans. `fn` fills `turn.record`, a typed `TurnRecord`. When `fn` settles, the record goes on the root span. Node handles (`tool(name)`, `model(name)`, `agent(name)`) and `set()` write to the active span. `getTraceId()` returns the trace that identifies the turn.
+
+Usage:
+
+- Span: the name is `invoke_agent {agent}`, of kind INTERNAL. It carries `gen_ai.operation.name = invoke_agent`, `gen_ai.agent.name` and, when given, `gen_ai.conversation.id`. The names follow the OpenTelemetry GenAI semantic conventions in `@opentelemetry/semantic-conventions` 1.43.0 (incubating). The package writes them as strings and does not import that package. Inside an active request span, the turn span is its child.
+- Record: the types are `TurnRecord`, `TurnMessage`, `TurnOptions` and `Turn` in `src/turn.ts`. Fields that Flywheel's `TurnOutput` also has keep its names (`query`, `answer`, `messages`, `toolCalled`, `model`, `ms`, `timings`). A tool result is a message with the role `tool` and a `toolName`.
+- Outcome: `answered`, `refused`, `error` or `aborted`. When `fn` resolves, the default is `answered`, and a value the caller set stays. When `fn` throws, the outcome is `error`, or `aborted` for an error named `AbortError`. The span status is ERROR, the exception is recorded, and the error is rethrown.
+- Attributes: `TURN_ATTRIBUTES` in `src/turn.ts` lists every name with its spec. `<name>` and `<step>` stand for the guardrail names and the timing keys. The record writes `app.turn.*`, plus `gen_ai.request.model` and `gen_ai.usage.input_tokens` and `gen_ai.usage.output_tokens`. Guardrails write `app.turn.guardrail.<name>.passed` and `.reason`. Timings write `app.turn.timing.<step>`.
+- Length limit: each string is cut at `options.maxLength` (default 1024) and sets `<key>.truncated`. Each message content is cut on its own, so `app.turn.messages` stays valid JSON, and a cut sets `app.turn.messages.truncated`. Tool call inputs are not cut. Set `maxLength` above the longest answer to keep the whole conversation.
+- Messages: `app.turn.messages` is a JSON array in the shape FLS writes to `app.model.legal-analysis.messages` (`role`, `content`, `toolCalls` with `toolName` and `input`). A reader of the old attribute reads the new one with the name changed only.
+- Timings and usage: pass the request clock as `options.timeline`. Its closed spans fill `timings` with their durations, and its `inputTokens` and `outputTokens` fill `usage`, when the record leaves them out.
+- Feedback: `turn.ref` holds the trace ID and span ID of the root span, as a `TurnRef`. Store it with the answer, and pass it as `feedback({ turn })`, so the feedback span is a child of the turn span (practice 6). Inside `fn`, `turnRef()` returns the same ref until a child span is active.
+- Manifest: `turn()` registers `TURN_ATTRIBUTES` under the source `turn` on each call. So that the start-up self-check and the manifest file list the names before the first turn, call `registerAttributes('turn', TURN_ATTRIBUTES)` in the schema module. Both come from the `./manifest` subpath (practice 5).
+- Invalid write: an outcome outside the enum, or a timing or token count of the wrong type, is dropped and named in `flywheel.attribute_error`, as for a schema handle.
+- Noop instance: `turn()` runs `fn` with a record that nothing writes, and `turn.ref` is undefined.
 
 Tests:
 
+- `one turn and two model calls export as one trace, the root named invoke_agent {agent}, the calls its children`
+- `turn() writes gen_ai.operation.name, gen_ai.agent.name and gen_ai.conversation.id on the root span`
+- `inside an active span, the turn span is its child`
+- `the turn record goes on the root span when the turn ends`
+- `turn() cuts each string and each message content at maxLength, sets .truncated, and keeps the messages JSON valid`
+- `an error inside the turn sets the outcome to error and the span status, and is rethrown`
+- `an AbortError inside the turn sets the outcome to aborted`
+- `a caller outcome stays, and an outcome outside the enum is dropped and named in flywheel.attribute_error`
+- `the request timeline fills the turn timings and usage when the record leaves them out`
+- `turn.ref holds the trace ID and span ID of the root span`
+- `feedback with turn.ref as its turn is a child of the turn span`
+- `the noop instance runs the turn and returns its result, and writes nothing`
+- `manifest() lists the turn names once the turn attributes are registered`
+- `every name a turn writes is in the manifest, with <name> and <step> standing for the caller keys`
 - `tool(name).set writes app.tool.<name>.<key> only, with no app.<name>.<key>`
 - `model(name).set writes app.model.<name>.<key> only, with no app.<key> or app.time_to_first_token_ms`
 - `agent(name).set writes app.agent.<name>.<key> only`
@@ -42,7 +70,7 @@ Tests:
 - `getTraceId() returns the trace ID of the active span`
 - `aiSdkTelemetry() on the live instance turns AI SDK telemetry on, with inputs and outputs`
 
-Status: Partial. PR 4 (turn record) closes it.
+Status: Met. FLS still writes its turn through `model('legal-analysis')`. Moving it to `turn()` is a change in fls-ai-tool.
 
 ### 2. One clock per request
 
@@ -209,6 +237,8 @@ Tests:
 - `manifest() lists no legacy app.<name>.<key> or app.<key> names for tool and model keys`
 - `every name a schema handle writes is in the manifest`
 - `registerAttributes() adds a module's names to every manifest, and a second call replaces them`
+- `manifest() lists the turn names once the turn attributes are registered`
+- `every name a turn writes is in the manifest, with <name> and <step> standing for the caller keys`
 - `the noop instance manifest() lists no names`
 - `writeManifestFile() imports a schema module and writes its manifest as JSON`
 - `VERSION equals the version in package.json`

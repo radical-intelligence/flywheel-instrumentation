@@ -37,3 +37,13 @@ export type {
   SpanAttrs,
   UsageLike,
 } from './timeline.js'
+export type {
+  Turn,
+  TurnRecord,
+  TurnOptions,
+  TurnOutcome,
+  TurnMessage,
+  TurnToolCall,
+  TurnGuardrail,
+  TurnUsage,
+} from './turn.js'

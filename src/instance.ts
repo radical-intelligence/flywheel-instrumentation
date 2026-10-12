@@ -3,6 +3,8 @@ import type { AttributeValue } from '@opentelemetry/api'
 import { createNodeHandle, createSchemaNodeHandle } from './node.js'
 import { emitMetadata } from './metadata.js'
 import { clockMethods } from './timeline.js'
+import { runTurn } from './turn.js'
+import type { Turn, TurnOptions } from './turn.js'
 import { activeTurnRef, emitFeedback } from './feedback.js'
 import { reportInvalid, writeSettings } from './schema.js'
 import { buildManifest } from './manifest.js'
@@ -98,6 +100,10 @@ export function createInstance(options?: InitOptions): FlywheelInstance {
 
     manifest() {
       return buildManifest(schemas)
+    },
+
+    turn<T>(options: TurnOptions, fn: (turn: Turn) => T | Promise<T>): Promise<T> {
+      return runTurn(settings, options, fn)
     },
 
     ...clockMethods,

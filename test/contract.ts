@@ -16,15 +16,15 @@
  * that span must run before any other case calls `init()` inside `withSdk`.
  */
 import assert from 'node:assert/strict'
-import { trace, SpanKind, TraceFlags } from '@opentelemetry/api'
+import { trace, SpanKind, SpanStatusCode, TraceFlags } from '@opentelemetry/api'
 import { SeverityNumber } from '@opentelemetry/api-logs'
 import * as pkg from '../src/index.js'
 import { init, flywheel, noopInstance } from '../src/index.js'
-import type { NodeSchema, TurnRef } from '../src/index.js'
+import type { NodeSchema, TurnMessage, TurnRef } from '../src/index.js'
 import { recordStreamPart } from '../src/ai-sdk.js'
 import { requestTimeline, startTimeline, timedMiddleware } from '../src/express.js'
 import type { NextFunction, Request, RequestHandler, Response } from 'express'
-import { buildManifest, registerAttributes } from '../src/manifest.js'
+import { buildManifest, registerAttributes, TURN_ATTRIBUTES } from '../src/manifest.js'
 import { writeManifestFile } from '../src/manifestFile.js'
 import { VERSION } from '../src/version.js'
 import { logs } from '@opentelemetry/api-logs'
@@ -97,6 +97,17 @@ const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 /** The part of an Express response that the middleware reads. */
 const fakeResponse = () => ({ locals: {} }) as unknown as Response
 const fakeRequest = {} as Request
+
+/** A manual model call span, as AI SDK telemetry or a product would start it. */
+const modelCall = (name: string) =>
+  trace.getTracer('model').startActiveSpan(name, span => span.end())
+
+const TURN_MESSAGES: TurnMessage[] = [
+  { role: 'user', content: 'Can my landlord keep my bond?' },
+  { role: 'assistant', content: '', toolCalls: [{ toolName: 'search', input: { query: 'bond' }, toolCallId: 'c1' }] },
+  { role: 'tool', content: '3 chunks', toolName: 'search', toolCallId: 'c1' },
+  { role: 'assistant', content: 'Your landlord must apply to VCAT.' },
+]
 
 export const contractCases: ContractCase[] = [
   // Must stay first. See the header.
@@ -1461,4 +1472,252 @@ export const contractCases: ContractCase[] = [
     const pkgJson = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
     assert.equal(VERSION, pkgJson.version)
   }),
+  {
+    name: 'one turn and two model calls export as one trace, the root named invoke_agent {agent}, the calls its children',
+    run: () => withSdk(async (sdk) => {
+      const fw = init()
+      const result = await fw.turn({ agent: 'legal-analysis' }, async () => {
+        modelCall('chat gpt-4.1')
+        await sleep(1)
+        modelCall('chat gpt-4.1-mini')
+        return 'done'
+      })
+      assert.equal(result, 'done')
+      const spans = sdk.spans()
+      assert.equal(spans.length, 3)
+      const root = sdk.span('invoke_agent legal-analysis')
+      assert.equal(root.parentSpanContext, undefined)
+      assert.equal(new Set(spans.map(s => s.spanContext().traceId)).size, 1)
+      for (const name of ['chat gpt-4.1', 'chat gpt-4.1-mini']) {
+        assert.equal(sdk.span(name).parentSpanContext?.spanId, root.spanContext().spanId)
+      }
+    }),
+  },
+
+  {
+    name: 'turn() writes gen_ai.operation.name, gen_ai.agent.name and gen_ai.conversation.id on the root span',
+    run: () => withSdk(async (sdk) => {
+      const fw = init()
+      await fw.turn({ agent: 'legal-analysis', conversationId: 'conv-1', model: 'gpt-4.1' }, () => {})
+      await fw.turn({ agent: 'triage' }, () => {})
+      const attrs = sdk.span('invoke_agent legal-analysis').attributes
+      assert.equal(attrs['gen_ai.operation.name'], 'invoke_agent')
+      assert.equal(attrs['gen_ai.agent.name'], 'legal-analysis')
+      assert.equal(attrs['gen_ai.conversation.id'], 'conv-1')
+      assert.equal(attrs['gen_ai.request.model'], 'gpt-4.1')
+      assert.equal('gen_ai.conversation.id' in sdk.span('invoke_agent triage').attributes, false)
+    }),
+  },
+
+  {
+    name: 'inside an active span, the turn span is its child',
+    run: () => withSdk(async (sdk) => {
+      const fw = init()
+      await sdk.inSpan('request', () => fw.turn({ agent: 'legal-analysis' }, () => {}))
+      assert.equal(
+        sdk.span('invoke_agent legal-analysis').parentSpanContext?.spanId,
+        sdk.span('request').spanContext().spanId,
+      )
+    }),
+  },
+
+  {
+    name: 'the turn record goes on the root span when the turn ends',
+    run: () => withSdk(async (sdk) => {
+      const fw = init()
+      await fw.turn({ agent: 'legal-analysis', model: 'gpt-4.1' }, (turn) => {
+        turn.record.query = 'Can my landlord keep my bond?'
+        turn.record.answer = 'Your landlord must apply to VCAT.'
+        turn.record.messages.push(...TURN_MESSAGES)
+        turn.record.guardrails.push({ name: 'pii', passed: true }, { name: 'scope', passed: false, reason: 'tax' })
+        turn.record.timings = { search: 120, generate: 900 }
+        turn.record.usage = { inputTokens: 1500, outputTokens: 300 }
+        turn.record.ms = 1100
+      })
+      const attrs = sdk.span('invoke_agent legal-analysis').attributes
+      assert.deepEqual(JSON.parse(attrs['app.turn.messages'] as string), TURN_MESSAGES)
+      assert.deepEqual(
+        Object.fromEntries(Object.entries(attrs).filter(([k]) => k !== 'app.turn.messages' && !k.startsWith('gen_ai.operation') && !k.startsWith('gen_ai.agent'))),
+        {
+          'app.turn.outcome': 'answered',
+          'gen_ai.request.model': 'gpt-4.1',
+          'app.turn.query': 'Can my landlord keep my bond?',
+          'app.turn.answer': 'Your landlord must apply to VCAT.',
+          'app.turn.ms': 1100,
+          'app.turn.message_count': 4,
+          'app.turn.tool_called': true,
+          'app.turn.guardrail.pii.passed': true,
+          'app.turn.guardrail.scope.passed': false,
+          'app.turn.guardrail.scope.reason': 'tax',
+          'app.turn.timing.search': 120,
+          'app.turn.timing.generate': 900,
+          'gen_ai.usage.input_tokens': 1500,
+          'gen_ai.usage.output_tokens': 300,
+        },
+      )
+    }),
+  },
+
+  {
+    name: 'turn() cuts each string and each message content at maxLength, sets .truncated, and keeps the messages JSON valid',
+    run: () => withSdk(async (sdk) => {
+      const fw = init()
+      await fw.turn({ agent: 'legal-analysis', maxLength: 5 }, (turn) => {
+        turn.record.query = 'abcdefgh'
+        turn.record.answer = 'abc'
+        turn.record.messages.push({ role: 'user', content: 'abcdefgh' }, { role: 'assistant', content: 'abc' })
+      })
+      const attrs = sdk.span('invoke_agent legal-analysis').attributes
+      assert.equal(attrs['app.turn.query'], 'abcde')
+      assert.equal(attrs['app.turn.query.truncated'], true)
+      assert.equal(attrs['app.turn.answer'], 'abc')
+      assert.equal('app.turn.answer.truncated' in attrs, false)
+      assert.deepEqual(JSON.parse(attrs['app.turn.messages'] as string), [
+        { role: 'user', content: 'abcde' },
+        { role: 'assistant', content: 'abc' },
+      ])
+      assert.equal(attrs['app.turn.messages.truncated'], true)
+    }),
+  },
+
+  {
+    name: 'an error inside the turn sets the outcome to error and the span status, and is rethrown',
+    run: () => withSdk(async (sdk) => {
+      const fw = init()
+      const failure = new Error('model timed out')
+      await assert.rejects(
+        fw.turn({ agent: 'legal-analysis' }, (turn) => {
+          turn.record.query = 'q'
+          throw failure
+        }),
+        failure,
+      )
+      const root = sdk.span('invoke_agent legal-analysis')
+      assert.equal(root.attributes['app.turn.outcome'], 'error')
+      assert.equal(root.attributes['app.turn.query'], 'q')
+      assert.deepEqual(root.status, { code: SpanStatusCode.ERROR, message: 'model timed out' })
+      assert.equal(root.events.filter(e => e.name === 'exception').length, 1)
+    }),
+  },
+
+  {
+    name: 'an AbortError inside the turn sets the outcome to aborted',
+    run: () => withSdk(async (sdk) => {
+      const fw = init()
+      const abort = Object.assign(new Error('client closed'), { name: 'AbortError' })
+      await assert.rejects(fw.turn({ agent: 'legal-analysis' }, () => { throw abort }), abort)
+      assert.equal(sdk.span('invoke_agent legal-analysis').attributes['app.turn.outcome'], 'aborted')
+    }),
+  },
+
+  {
+    name: 'a caller outcome stays, and an outcome outside the enum is dropped and named in flywheel.attribute_error',
+    run: () => withSdk(async (sdk) => {
+      const fw = init()
+      await fw.turn({ agent: 'refuser' }, (turn) => { turn.record.outcome = 'refused' })
+      await fw.turn({ agent: 'bad' }, (turn) => { (turn.record as { outcome: string }).outcome = 'maybe' })
+      assert.equal(sdk.span('invoke_agent refuser').attributes['app.turn.outcome'], 'refused')
+      const bad = sdk.span('invoke_agent bad').attributes
+      assert.equal('app.turn.outcome' in bad, false)
+      assert.deepEqual(bad['flywheel.attribute_error'], ['app.turn.outcome'])
+    }),
+  },
+
+  {
+    name: 'the request timeline fills the turn timings and usage when the record leaves them out',
+    run: () => withSdk(async (sdk) => {
+      const fw = init()
+      const clock = fakeClock()
+      const rt = fw.createTimeline(clock.now)
+      await fw.runWithTimeline(rt, () =>
+        fw.turn({ agent: 'legal-analysis', timeline: rt }, async () => {
+          await fw.timed('search', () => clock.advance(40))
+          await fw.timed('generate', () => clock.advance(200))
+          fw.timeline().set('inputTokens', 900)
+          fw.timeline().set('outputTokens', 120)
+        }),
+      )
+      const attrs = sdk.span('invoke_agent legal-analysis').attributes
+      assert.equal(attrs['app.turn.timing.search'], 40)
+      assert.equal(attrs['app.turn.timing.generate'], 200)
+      assert.equal(attrs['gen_ai.usage.input_tokens'], 900)
+      assert.equal(attrs['gen_ai.usage.output_tokens'], 120)
+    }),
+  },
+
+  {
+    name: 'turn.ref holds the trace ID and span ID of the root span',
+    run: () => withSdk(async (sdk) => {
+      const fw = init()
+      let ref: unknown
+      await fw.turn({ agent: 'legal-analysis' }, (turn) => {
+        ref = turn.ref
+        assert.equal(fw.getTraceId(), turn.ref?.traceId)
+      })
+      const ctx = sdk.span('invoke_agent legal-analysis').spanContext()
+      assert.deepEqual(ref, { traceId: ctx.traceId, spanId: ctx.spanId })
+    }),
+  },
+
+  {
+    name: 'the noop instance runs the turn and returns its result, and writes nothing',
+    run: () => withSdk(async (sdk) => {
+      const result = await noopInstance.turn({ agent: 'legal-analysis' }, (turn) => {
+        turn.record.query = 'q'
+        assert.equal(turn.ref, undefined)
+        return 42
+      })
+      assert.equal(result, 42)
+      assert.equal(sdk.spans().length, 0)
+    }),
+  },
+
+  {
+    name: 'feedback with turn.ref as its turn is a child of the turn span',
+    run: () => withSdk(async (sdk) => {
+      const fw = init()
+      let ref: TurnRef | undefined
+      await fw.turn({ agent: 'legal-analysis' }, (turn) => { ref = turn.ref })
+      fw.feedback({ kind: 'rating', rating: 'up', turn: ref, session: 's1' })
+      const root = sdk.span('invoke_agent legal-analysis').spanContext()
+      const feedback = sdk.spans().find(s => s.name !== 'invoke_agent legal-analysis')
+      assert.equal(feedback?.spanContext().traceId, root.traceId)
+      assert.equal(feedback?.parentSpanContext?.spanId, root.spanId)
+    }),
+  },
+
+  sync('manifest() lists the turn names once the turn attributes are registered', () => {
+    registerAttributes('turn', TURN_ATTRIBUTES)
+    try {
+      const turnNames = init().manifest().attributes.filter(a => a.source === 'turn')
+      assert.deepEqual(turnNames.map(a => a.name), Object.keys(TURN_ATTRIBUTES).sort())
+      assert.deepEqual(turnNames.find(a => a.name === 'app.turn.outcome')?.values, ['answered', 'refused', 'error', 'aborted'])
+    } finally {
+      registerAttributes('turn', {})
+    }
+  }),
+
+  {
+    name: 'every name a turn writes is in the manifest, with <name> and <step> standing for the caller keys',
+    run: () => withSdk(async (sdk) => {
+      const fw = init()
+      await fw.turn({ agent: 'legal-analysis', conversationId: 'c', model: 'gpt-4.1', maxLength: 3 }, (turn) => {
+        turn.record.query = 'long query'
+        turn.record.answer = 'long answer'
+        turn.record.messages.push({ role: 'user', content: 'long content' })
+        turn.record.guardrails.push({ name: 'scope', passed: false, reason: 'out of scope' })
+        turn.record.timings = { search: 1 }
+        turn.record.usage = { inputTokens: 1, outputTokens: 1 }
+      })
+      try {
+        const names = new Set(fw.manifest().attributes.map(a => a.name))
+        const written = Object.keys(sdk.span('invoke_agent legal-analysis').attributes)
+          .map(n => n.replace(/^app\.turn\.guardrail\.[^.]+\./, 'app.turn.guardrail.<name>.').replace(/^app\.turn\.timing\..+$/, 'app.turn.timing.<step>'))
+        assert.ok(written.length > 15)
+        assert.deepEqual(written.filter(n => !names.has(n)), [])
+      } finally {
+        registerAttributes('turn', {})
+      }
+    }),
+  },
 ]
