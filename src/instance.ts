@@ -2,6 +2,7 @@ import { trace } from '@opentelemetry/api'
 import type { AttributeValue } from '@opentelemetry/api'
 import { createNodeHandle, createSchemaNodeHandle } from './node.js'
 import { emitMetadata } from './metadata.js'
+import { clockMethods } from './timeline.js'
 import { reportInvalid, writeSettings } from './schema.js'
 import type { FlywheelInstance, NodeHandle, NodeSchema, NodeType, InitOptions, AiSdkTelemetryConfig, AiSdkTelemetryOptions } from './types.js'
 
@@ -74,5 +75,7 @@ export function createInstance(options?: InitOptions): FlywheelInstance {
       // This method exists so callers can await without knowing whether OTEL
       // is live or noop.
     },
+
+    ...clockMethods,
   }
 }

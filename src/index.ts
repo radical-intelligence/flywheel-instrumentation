@@ -14,3 +14,12 @@ export type {
   AiSdkTelemetryOptions,
   AiSdkTelemetryConfig,
 } from './types.js'
+export type {
+  RequestTimeline,
+  Timeline,
+  TimelineSpan,
+  TimelinePayload,
+  OpenSpan,
+  SpanAttrs,
+  UsageLike,
+} from './timeline.js'
