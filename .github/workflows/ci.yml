@@ -1,9 +1,10 @@
 name: CI
 
+# Pull requests test GitHub's merge ref, so a push to main does not run CI
+# again. Run the workflow by hand to test main.
 on:
   pull_request:
-  push:
-    branches: [main]
+  workflow_dispatch:
 
 jobs:
   check:
