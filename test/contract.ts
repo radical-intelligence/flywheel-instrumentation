@@ -133,7 +133,7 @@ export const contractCases: ContractCase[] = [
       assert.deepEqual(first.attributes, {
         'flywheel.version': VERSION,
         'flywheel.schema.node_count': 1,
-        'flywheel.schema.attribute_count': 3 + 10,
+        'flywheel.schema.attribute_count': 3 + 21 + 10,
         'flywheel.attribute_count_limit': 1024,
         'flywheel.self_check.ok': true,
         'flywheel.self_check.issues': [],
@@ -141,6 +141,16 @@ export const contractCases: ContractCase[] = [
       assert.deepEqual(sdk.span('request').attributes, {})
       assert.equal(report?.startupSpan?.traceId, startups[1].spanContext().traceId)
       assert.equal(report?.startupSpan?.sampled, true)
+    }),
+  },
+
+  {
+    name: 'the turn names are registered when the package loads, so manifest() and selfCheck() count them before any turn',
+    run: () => withSdk(async () => {
+      const fw = init()
+      const turnNames = fw.manifest().attributes.filter(a => a.source === 'turn').map(a => a.name)
+      assert.deepEqual(turnNames, Object.keys(TURN_ATTRIBUTES).sort())
+      assert.equal(fw.selfCheck().attributeCounts.turn, 3 + Object.keys(TURN_ATTRIBUTES).length)
     }),
   },
 
@@ -1304,13 +1314,13 @@ export const contractCases: ContractCase[] = [
         init({ schemas: { agent: { wide: wideSchema(1100) }, tool: { a: wideSchema(10) } } }))
       const report = fw.selfCheck()
       assert.equal(report.ok, true)
-      assert.deepEqual(report.attributeCounts, { turn: 3 + 1100 + 10, nodes: { 'agent.wide': 1100, 'tool.a': 10 } })
+      assert.deepEqual(report.attributeCounts, { turn: 3 + 21 + 1100 + 10, nodes: { 'agent.wide': 1100, 'tool.a': 10 } })
       assert.deepEqual(report.issues.map(i => [i.level, i.code]), [
         ['warning', 'attribute_count_limit'],
         ['warning', 'attribute_count_limit'],
       ])
       assert.match(report.issues[0].message, /agent\.wide declares 1100 .* limit of 1024/)
-      assert.match(report.issues[1].message, /turn can write 1113 .* limit of 1024/)
+      assert.match(report.issues[1].message, /turn can write 1134 .* limit of 1024/)
       assert.equal(warnings.length, 2)
     }),
   },
@@ -1391,8 +1401,29 @@ export const contractCases: ContractCase[] = [
         { name: 'app.tool.search.query', type: 'string', source: 'tool.search', maxLength: 64 },
         { name: 'app.tool.search.query.truncated', type: 'boolean', source: 'tool.search' },
         { name: 'app.tool.search.status', type: 'enum', source: 'tool.search', values: ['ok', 'error'] },
+        { name: 'app.turn.answer', type: 'string', source: 'turn' },
+        { name: 'app.turn.answer.truncated', type: 'boolean', source: 'turn' },
+        { name: 'app.turn.guardrail.<name>.passed', type: 'boolean', source: 'turn' },
+        { name: 'app.turn.guardrail.<name>.reason', type: 'string', source: 'turn' },
+        { name: 'app.turn.guardrail.<name>.reason.truncated', type: 'boolean', source: 'turn' },
+        { name: 'app.turn.message_count', type: 'count', source: 'turn' },
+        { name: 'app.turn.messages', type: 'string', source: 'turn' },
+        { name: 'app.turn.messages.truncated', type: 'boolean', source: 'turn' },
+        { name: 'app.turn.ms', type: 'number', source: 'turn' },
+        { name: 'app.turn.outcome', type: 'enum', source: 'turn', values: ['answered', 'refused', 'error', 'aborted'] },
+        { name: 'app.turn.query', type: 'string', source: 'turn' },
+        { name: 'app.turn.query.truncated', type: 'boolean', source: 'turn' },
+        { name: 'app.turn.timing.<step>', type: 'number', source: 'turn' },
+        { name: 'app.turn.tool_called', type: 'boolean', source: 'turn' },
         { name: 'enduser.id', type: 'string', source: 'core' },
         { name: 'flywheel.attribute_error', type: 'string[]', source: 'core' },
+        { name: 'gen_ai.agent.name', type: 'string', source: 'turn' },
+        { name: 'gen_ai.conversation.id', type: 'string', source: 'turn' },
+        { name: 'gen_ai.operation.name', type: 'enum', source: 'turn', values: ['invoke_agent'] },
+        { name: 'gen_ai.request.model', type: 'string', source: 'turn' },
+        { name: 'gen_ai.request.model.truncated', type: 'boolean', source: 'turn' },
+        { name: 'gen_ai.usage.input_tokens', type: 'count', source: 'turn' },
+        { name: 'gen_ai.usage.output_tokens', type: 'count', source: 'turn' },
         { name: 'session.id', type: 'string', source: 'core' },
       ],
     })
@@ -1405,7 +1436,7 @@ export const contractCases: ContractCase[] = [
         model: { analysis: { attributes: { ttft_ms: { type: 'number' }, answer: { type: 'string' } } } },
       },
     }).manifest().attributes.map(a => a.name)
-    const allowed = /^(app\.(tool|model|agent)\.|enduser\.id$|session\.id$|flywheel\.)/
+    const allowed = /^(app\.(tool|model|agent|turn)\.|gen_ai\.|enduser\.id$|session\.id$|flywheel\.)/
     assert.deepEqual(names.filter(n => !allowed.test(n)), [])
     assert.ok(names.includes('app.tool.search.status'))
     assert.ok(names.includes('app.model.analysis.ttft_ms'))
@@ -1438,7 +1469,10 @@ export const contractCases: ContractCase[] = [
         init().manifest().attributes.filter(a => a.source === 'contract.turn'),
         [{ name: 'app.turn.status', type: 'enum', source: 'contract.turn', values: ['ok', 'error'] }],
       )
-      assert.deepEqual(buildManifest().attributes.map(a => a.name), ['app.turn.status', 'enduser.id', 'flywheel.attribute_error', 'session.id'])
+      assert.deepEqual(
+        buildManifest().attributes.map(a => a.name),
+        [...Object.keys(TURN_ATTRIBUTES), 'app.turn.status', 'enduser.id', 'flywheel.attribute_error', 'session.id'].sort(),
+      )
     } finally {
       registerAttributes('contract.turn', {})
     }
@@ -1459,8 +1493,8 @@ export const contractCases: ContractCase[] = [
         const read = JSON.parse(readFileSync(out, 'utf8'))
         assert.deepEqual(read, written)
         assert.deepEqual(read.attributes.map((a: { name: string }) => a.name), [
-          'app.tool.search.result_count', 'app.turn.status', 'enduser.id', 'flywheel.attribute_error', 'session.id',
-        ])
+          'app.tool.search.result_count', ...Object.keys(TURN_ATTRIBUTES), 'app.turn.status', 'enduser.id', 'flywheel.attribute_error', 'session.id',
+        ].sort())
       } finally {
         rmSync(dir, { recursive: true, force: true })
         registerAttributes('fixture.turn', {})
