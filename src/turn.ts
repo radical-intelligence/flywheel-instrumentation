@@ -17,21 +17,14 @@ import { checkValue, reportInvalid, DEFAULT_MAX_LENGTH } from './schema.js'
 import type { WriteSettings } from './schema.js'
 import { registerAttributes } from './manifest.js'
 import type { RequestTimeline } from './timeline.js'
+import { TURN_ATTRIBUTES, TURN_OUTCOMES } from './turnAttributes.js'
+import type { TurnOutcome } from './turnAttributes.js'
 import type { AttributeSpec, TurnRef } from './types.js'
 
 const TRACER_NAME = 'flywheel'
 
-/**
- * How the turn ended.
- *
- * - `answered`: the product gave an answer. The default when `fn` resolves.
- * - `refused`: the product declined to answer, for example out of scope.
- * - `error`: `fn` threw.
- * - `aborted`: the turn stopped before it finished, for example the client
- *   disconnected. Set when `fn` throws an error named `AbortError`.
- */
-export const TURN_OUTCOMES = ['answered', 'refused', 'error', 'aborted'] as const
-export type TurnOutcome = typeof TURN_OUTCOMES[number]
+export { TURN_ATTRIBUTES, TURN_OUTCOMES } from './turnAttributes.js'
+export type { TurnOutcome } from './turnAttributes.js'
 
 /** A tool call that a message asks for. The names match Flywheel's `TurnOutput`. */
 export interface TurnToolCall {
@@ -98,39 +91,6 @@ export interface Turn {
   readonly record: TurnRecord
   /** The root span, for `feedback({ turn })`. Undefined on the noop instance. */
   readonly ref: TurnRef | undefined
-}
-
-const STRING: AttributeSpec = { type: 'string' }
-const CUT: AttributeSpec = { type: 'boolean' }
-
-/**
- * Every attribute name that a turn can write, for the manifest. `<name>` and
- * `<step>` stand for the guardrail names and the timing keys of the caller.
- * Register it with `registerAttributes('turn', TURN_ATTRIBUTES)`, and
- * `turn()` registers it on each call.
- */
-export const TURN_ATTRIBUTES: Record<string, AttributeSpec> = {
-  'gen_ai.operation.name': { type: 'enum', values: ['invoke_agent'] },
-  'gen_ai.agent.name': STRING,
-  'gen_ai.conversation.id': STRING,
-  'gen_ai.request.model': STRING,
-  'gen_ai.request.model.truncated': CUT,
-  'gen_ai.usage.input_tokens': { type: 'count' },
-  'gen_ai.usage.output_tokens': { type: 'count' },
-  'app.turn.outcome': { type: 'enum', values: TURN_OUTCOMES },
-  'app.turn.query': STRING,
-  'app.turn.query.truncated': CUT,
-  'app.turn.answer': STRING,
-  'app.turn.answer.truncated': CUT,
-  'app.turn.messages': STRING,
-  'app.turn.messages.truncated': CUT,
-  'app.turn.message_count': { type: 'count' },
-  'app.turn.tool_called': { type: 'boolean' },
-  'app.turn.ms': { type: 'number' },
-  'app.turn.guardrail.<name>.passed': { type: 'boolean' },
-  'app.turn.guardrail.<name>.reason': STRING,
-  'app.turn.guardrail.<name>.reason.truncated': CUT,
-  'app.turn.timing.<step>': { type: 'number' },
 }
 
 const OUTCOME_SPEC: AttributeSpec = { type: 'enum', values: TURN_OUTCOMES }
@@ -211,6 +171,8 @@ export async function runTurn<T>(
   options: TurnOptions,
   fn: (turn: Turn) => T | Promise<T>,
 ): Promise<T> {
+  // The manifest registers these names when the package loads. This call
+  // restores them after a caller replaces the `turn` source.
   registerAttributes('turn', TURN_ATTRIBUTES)
   const attributes: Record<string, AttributeValue> = {
     'gen_ai.operation.name': 'invoke_agent',

@@ -1,6 +1,7 @@
 import { schemaMaxLength } from './schema.js'
 import { PACKAGE_NAME, VERSION } from './version.js'
-export { TURN_ATTRIBUTES } from './turn.js'
+import { TURN_ATTRIBUTES } from './turnAttributes.js'
+export { TURN_ATTRIBUTES }
 import type { AttributeSpec, InstrumentationManifest, ManifestAttribute, NodeSchemas, NodeType } from './types.js'
 
 /** The attributes the instance writes itself, with no schema. */
@@ -10,8 +11,9 @@ const CORE: Record<string, AttributeSpec> = {
   'flywheel.attribute_error': { type: 'string[]' },
 }
 
-// Attributes that other modules write on the turn span, by source.
-const registered = new Map<string, Record<string, AttributeSpec>>()
+// Attributes that other modules write on the turn span, by source. The turn
+// record's names are registered by default, so every manifest lists them.
+const registered = new Map<string, Record<string, AttributeSpec>>([['turn', TURN_ATTRIBUTES]])
 
 /**
  * Adds attributes that a module writes on the turn span to every manifest.
