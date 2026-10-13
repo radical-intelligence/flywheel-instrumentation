@@ -9,7 +9,7 @@ This file is for an AI agent that adds this package to a product, or changes the
 Install it as a git dependency, at a tag:
 
 ```bash
-npm i github:radical-intelligence/flywheel-instrumentation#v0.1.0
+npm i github:radical-intelligence/flywheel-instrumentation#v1.0.0
 npm i @opentelemetry/api @opentelemetry/api-logs
 ```
 
@@ -25,7 +25,7 @@ The public API is in `src/index.ts`, and the types are in `src/types.ts`. The su
 
 ## Practices
 
-The blueprint "Observability for agentic systems" has seven practices. Each rule below is independent of the backend. Each status names the PR in this repository that closes the gap. A conformance test is a case name in `test/contract.ts`.
+The blueprint "Observability for agentic systems" has seven practices. Each rule below is independent of the backend. Each status says whether this package meets the practice. A conformance test is a case name in `test/contract.ts`.
 
 ### 1. One record per turn
 
@@ -38,12 +38,12 @@ Usage:
 - Span: the name is `invoke_agent {agent}`, of kind INTERNAL. It carries `gen_ai.operation.name = invoke_agent`, `gen_ai.agent.name` and, when given, `gen_ai.conversation.id`. The names follow the OpenTelemetry GenAI semantic conventions in `@opentelemetry/semantic-conventions` 1.43.0 (incubating). The package writes them as strings and does not import that package. Inside an active request span, the turn span is its child.
 - Record: the types are `TurnRecord`, `TurnMessage`, `TurnOptions` and `Turn` in `src/turn.ts`. Fields that Flywheel's `TurnOutput` also has keep its names (`query`, `answer`, `messages`, `toolCalled`, `model`, `ms`, `timings`). A tool result is a message with the role `tool` and a `toolName`.
 - Outcome: `answered`, `refused`, `error` or `aborted`. When `fn` resolves, the default is `answered`, and a value the caller set stays. When `fn` throws, the outcome is `error`, or `aborted` for an error named `AbortError`. The span status is ERROR, the exception is recorded, and the error is rethrown.
-- Attributes: `TURN_ATTRIBUTES` in `src/turn.ts` lists every name with its spec. `<name>` and `<step>` stand for the guardrail names and the timing keys. The record writes `app.turn.*`, plus `gen_ai.request.model` and `gen_ai.usage.input_tokens` and `gen_ai.usage.output_tokens`. Guardrails write `app.turn.guardrail.<name>.passed` and `.reason`. Timings write `app.turn.timing.<step>`.
+- Attributes: `TURN_ATTRIBUTES` in `src/turnAttributes.ts` lists every name with its spec. `<name>` and `<step>` stand for the guardrail names and the timing keys. The record writes `app.turn.*`, plus `gen_ai.request.model` and `gen_ai.usage.input_tokens` and `gen_ai.usage.output_tokens`. Guardrails write `app.turn.guardrail.<name>.passed` and `.reason`. Timings write `app.turn.timing.<step>`.
 - Length limit: each string is cut at `options.maxLength` (default 1024) and sets `<key>.truncated`. Each message content is cut on its own, so `app.turn.messages` stays valid JSON, and a cut sets `app.turn.messages.truncated`. Tool call inputs are not cut. Set `maxLength` above the longest answer to keep the whole conversation.
 - Messages: `app.turn.messages` is a JSON array in the shape FLS writes to `app.model.legal-analysis.messages` (`role`, `content`, `toolCalls` with `toolName` and `input`). A reader of the old attribute reads the new one with the name changed only.
 - Timings and usage: pass the request clock as `options.timeline`. Its closed spans fill `timings` with their durations, and its `inputTokens` and `outputTokens` fill `usage`, when the record leaves them out.
 - Feedback: `turn.ref` holds the trace ID and span ID of the root span, as a `TurnRef`. Store it with the answer, and pass it as `feedback({ turn })`, so the feedback span is a child of the turn span (practice 6). Inside `fn`, `turnRef()` returns the same ref until a child span is active.
-- Manifest: `turn()` registers `TURN_ATTRIBUTES` under the source `turn` on each call. So that the start-up self-check and the manifest file list the names before the first turn, call `registerAttributes('turn', TURN_ATTRIBUTES)` in the schema module. Both come from the `./manifest` subpath (practice 5).
+- Manifest: the package registers `TURN_ATTRIBUTES` under the source `turn` when it loads. The start-up self-check and the manifest file list the names before the first turn, with no product code (practice 5). Each `turn()` call registers them again, so a caller that replaces the `turn` source gets them back.
 - Invalid write: an outcome outside the enum, or a timing or token count of the wrong type, is dropped and named in `flywheel.attribute_error`, as for a schema handle.
 - Noop instance: `turn()` runs `fn` with a record that nothing writes, and `turn.ref` is undefined.
 
@@ -61,6 +61,7 @@ Tests:
 - `turn.ref holds the trace ID and span ID of the root span`
 - `feedback with turn.ref as its turn is a child of the turn span`
 - `the noop instance runs the turn and returns its result, and writes nothing`
+- `the turn names are registered when the package loads, so manifest() and selfCheck() count them before any turn`
 - `manifest() lists the turn names once the turn attributes are registered`
 - `every name a turn writes is in the manifest, with <name> and <step> standing for the caller keys`
 - `tool(name).set writes app.tool.<name>.<key> only, with no app.<name>.<key>`
@@ -69,6 +70,7 @@ Tests:
 - `writes go to the active span only`
 - `getTraceId() returns the trace ID of the active span`
 - `aiSdkTelemetry() on the live instance turns AI SDK telemetry on, with inputs and outputs`
+- `aiSdkTelemetry() on the noop instance turns AI SDK telemetry off`
 
 Status: Met. FLS still writes its turn through `model('legal-analysis')`. Moving it to `turn()` is a change in fls-ai-tool.
 
@@ -119,7 +121,7 @@ Status: Met.
 
 Rule: every attribute name follows one schema, and every product uses the same names for the same facts. Attributes carry counts and identifiers in place of free content where possible, and values have a fixed length limit.
 
-Provides: node handles prefix each key as `app.<type>.<name>.<key>`. `set()` writes keys as given. A node handle takes an optional schema as its second argument, for example `tool('search', schema)`. With no schema, a handle writes every key as given. `user(id)` and `session(id)` set `enduser.id` and `session.id` on the active span. Apart from a schema rename (see Rename below), node handles write no other name. The legacy dual-write (`app.<name>.<key>` for tools, `app.<key>` for models) is removed. fls-ai-tool#411 moved the saved queries to the new names (merged into dev as 89352d2).
+Provides: node handles prefix each key as `app.<type>.<name>.<key>`. `set()` writes keys as given. A node handle takes an optional schema as its second argument, for example `tool('search', schema)`. With no schema, a handle writes every key as given. `user(id)` and `session(id)` set `enduser.id` and `session.id` on the active span. Apart from a schema rename (see Rename below), node handles write no other name.
 
 Usage:
 
@@ -162,7 +164,7 @@ Provides: `selfCheck()` checks the telemetry setup and returns a `SelfCheckRepor
 - Tracer provider: the global tracer provider is a proxy. The proxy gives a delegate tracer only after a provider is registered, so no delegate is an error (`no_tracer_provider`).
 - Logger provider: the check asks the `flywheel` logger `enabled()`. With no provider, the API logger answers false. The check fails on it (`no_logger_provider`) only with `init({ requireLoggerProvider: true })`. The default is the value of `azureCustomEvents`. An `@opentelemetry/api-logs` version with no `Logger.enabled()` gives a warning in its place.
 - Start-up span: one `INTERNAL` span named `flywheel.startup`, on the `flywheel` tracer, in a new trace. It carries `flywheel.version`, `flywheel.schema.node_count`, `flywheel.schema.attribute_count`, `flywheel.attribute_count_limit`, `flywheel.self_check.ok` and `flywheel.self_check.issues`. A sampler that drops it gives a warning.
-- Attribute count: the check counts the manifest names for each node and for the whole turn. A count over the span attribute count limit gives a warning, because the SDK drops the keys past the limit with no error. The SDK tracer reports the limit through `getSpanLimits()`. With another tracer, the check reads `OTEL_SPAN_ATTRIBUTE_COUNT_LIMIT`, else uses 128.
+- Attribute count: the check counts the manifest names for each node and for the whole turn. The whole turn includes the turn record names, which the package registers when it loads (practice 1). A count over the span attribute count limit gives a warning, because the SDK drops the keys past the limit with no error. The SDK tracer reports the limit through `getSpanLimits()`. With another tracer, the check reads `OTEL_SPAN_ATTRIBUTE_COUNT_LIMIT`, else uses 128.
 - Value size: a declared `maxLength` over the exporter value size limit gives a warning. The limit is `init({ valueSizeLimit })`, default 8192 bytes. That default is the Azure Monitor custom dimension cap. Other exporters have other limits. `maxLength` counts characters, so text that is not ASCII can pass the check and still go over the limit.
 
 Usage:
@@ -196,12 +198,16 @@ Langfuse (public API v2, basic auth with the project keys). Organisations create
 Tests:
 
 - `flywheel() returns the noop instance before init()`
+- `the package exports init, flywheel and noopInstance`
+- `init() returns a live instance, and flywheel() returns it after`
+- `each init() replaces the instance flywheel() returns`
 - `the first init() with a tracer provider emits one flywheel.startup span, at the root, with the version and schema counts`
 - `a later init() emits no startup span, and selfCheck() emits one on each call`
 - `with a tracer and a logger provider, selfCheck() reports ok with no issues`
 - `with no tracer provider, selfCheck() fails with no_tracer_provider and init() writes it to the console`
 - `in strict mode, init() throws when the self-check fails, and flywheel() keeps the previous instance`
 - `with requireLoggerProvider or azureCustomEvents, selfCheck() fails with no logger provider`
+- `the turn names are registered when the package loads, so manifest() and selfCheck() count them before any turn`
 - `selfCheck() warns when a node or the turn declares more names than the SDK attribute count limit, and stays ok`
 - `with no SDK limit, selfCheck() reads OTEL_SPAN_ATTRIBUTE_COUNT_LIMIT, else the default of 128`
 - `selfCheck() warns when a declared maxLength exceeds the value size limit, 8192 by default`
@@ -220,6 +226,7 @@ Provides: `manifest()` returns an `InstrumentationManifest`: every attribute nam
 
 - For each key of each schema in `init({ schemas })`: `app.<type>.<name>.<key>`, its `.truncated` flag for a string or a string array, and the old name of a rename with `until`. The old name has `aliasOf`, the name it repeats.
 - The core names: `enduser.id`, `session.id` and `flywheel.attribute_error`.
+- The turn record names, `TURN_ATTRIBUTES` in `src/turnAttributes.ts`, under the source `turn`. The package registers them when it loads (practice 1).
 - The names that other modules add with `registerAttributes(source, attributes)`, from the `./manifest` subpath. Each key is a full attribute name with an `AttributeSpec`. A second call with the same source replaces the first.
 
 Each entry has `name`, `type` and `source`, and `values` for an enum and `maxLength` for a string. Names that a product writes with `set()` or a handle with no schema are not in the manifest, unless the product registers them. That includes the `app.timeline.*` names (practice 2).
@@ -237,6 +244,7 @@ Tests:
 - `manifest() lists no legacy app.<name>.<key> or app.<key> names for tool and model keys`
 - `every name a schema handle writes is in the manifest`
 - `registerAttributes() adds a module's names to every manifest, and a second call replaces them`
+- `the turn names are registered when the package loads, so manifest() and selfCheck() count them before any turn`
 - `manifest() lists the turn names once the turn attributes are registered`
 - `every name a turn writes is in the manifest, with <name> and <step> standing for the caller keys`
 - `the noop instance manifest() lists no names`
