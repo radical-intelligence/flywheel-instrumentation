@@ -1,6 +1,6 @@
 {
   "name": "@radical-intelligence/flywheel-instrumentation",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "OpenTelemetry instrumentation for products that the Flywheel analyses",
   "type": "module",
   "repository": {
