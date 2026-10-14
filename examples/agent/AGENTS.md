@@ -1,6 +1,6 @@
 # AGENTS.md: the example agent
 
-This file is for an AI agent that builds observability into an agentic product. Use this example as the reference implementation. Copy its pattern, and keep each principle below when you change it.
+This file is for an AI agent that builds observability into an agentic product. This example is the blueprint for an instrumented agent. Start a new agent from it, or copy its pattern into an existing product. Keep each principle below when you change it.
 
 The package contract is in `AGENTS.md` at the repository root. This file says where the example meets each principle, and how to extend it without breaking one.
 
