@@ -25,7 +25,7 @@ The public API is in `src/index.ts`, and the types are in `src/types.ts`. The su
 
 ## Example
 
-`examples/agent/` is a runnable product that uses the package, with practices 1 to 6 in code. Copy its pattern: `telemetry.ts` registers the providers, `main.ts` calls `init({ schemas })` and the self-check, `schemas.ts` is the schema module, and `app.ts` has the turn, the timeline, the node handles and the feedback route. `test/example.test.ts` checks the spans it exports. The README has the commands.
+`examples/agent/` is a runnable product that uses the package, with practices 1 to 6 in code. Copy its pattern: `telemetry.ts` registers the providers, `main.ts` calls `init({ schemas })` and the self-check, `schemas.ts` is the schema module, and `app.ts` has the turn, the timeline, the node handles and the feedback route. `test/example.test.ts` checks the spans it exports. The README has the commands. `examples/agent/AGENTS.md` maps each practice to the example code and says how to extend it.
 
 ## Practices
 

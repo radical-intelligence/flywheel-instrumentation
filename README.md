@@ -24,7 +24,7 @@ AGENTS.md has the full guide. The public API is in `src/index.ts`, with the type
 
 ## Example
 
-`examples/agent/` is a small Express agent that uses the package, with practices 1 to 6 in code. It runs with a mock model and a console exporter, so it needs no API key and no network. Each file explains its part in its header comment. Start with `examples/agent/main.ts`.
+`examples/agent/` is a small Express agent that uses the package, with practices 1 to 6 in code. It runs with a mock model and a console exporter, so it needs no API key and no network. Each file explains its part in its header comment. Start with `examples/agent/AGENTS.md`, which explains each practice in the example and how to build on it.
 
 ```bash
 npm run build
