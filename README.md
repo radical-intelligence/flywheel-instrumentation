@@ -22,6 +22,18 @@ The install builds `dist/`. The two OpenTelemetry packages are peer dependencies
 
 AGENTS.md has the full guide. The public API is in `src/index.ts`, with the types in `src/types.ts`. The subpaths are in `src/express.ts`, `src/ai-sdk.ts` and `src/manifest.ts`.
 
+## Example
+
+`examples/agent/` is a small Express agent that uses the package, with practices 1 to 6 in code. It runs with a mock model and a console exporter, so it needs no API key and no network. Each file explains its part in its header comment. Start with `examples/agent/main.ts`.
+
+```bash
+npm run build
+npm run example            # serves POST /chat and POST /feedback on port 3000
+npm run example:manifest   # writes examples/agent/instrumentation-manifest.json
+```
+
+`test/example.test.ts` boots the example and checks the spans it exports.
+
 ## Backends
 
 The package uses only the OpenTelemetry API, so the product picks the exporter. AGENTS.md documents two backends:

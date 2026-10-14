@@ -23,6 +23,10 @@ To initialise it:
 
 The public API is in `src/index.ts`, and the types are in `src/types.ts`. The subpath exports are in `src/express.ts` and `src/ai-sdk.ts` (see practice 2), and `src/manifest.ts` (see practice 5).
 
+## Example
+
+`examples/agent/` is a runnable product that uses the package, with practices 1 to 6 in code. Copy its pattern: `telemetry.ts` registers the providers, `main.ts` calls `init({ schemas })` and the self-check, `schemas.ts` is the schema module, and `app.ts` has the turn, the timeline, the node handles and the feedback route. `test/example.test.ts` checks the spans it exports. The README has the commands.
+
 ## Practices
 
 The blueprint "Observability for agentic systems" has seven practices. Each rule below is independent of the backend. Each status says whether this package meets the practice. A conformance test is a case name in `test/contract.ts`.
