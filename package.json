@@ -39,8 +39,10 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.test.json",
-    "test": "node --import tsx --test test/contract.test.ts",
-    "prepare": "npm run build"
+    "test": "node --import tsx --test test/contract.test.ts test/example.test.ts",
+    "prepare": "npm run build",
+    "example": "node --import tsx examples/agent/main.ts",
+    "example:manifest": "node --import tsx dist/cli.js examples/agent/schemas.ts --out examples/agent/instrumentation-manifest.json"
   },
   "peerDependencies": {
     "@opentelemetry/api": "^1.9.0",
@@ -61,6 +63,7 @@
     }
   },
   "devDependencies": {
+    "@ai-sdk/openai": "2.0.131",
     "@opentelemetry/api": "1.9.1",
     "@opentelemetry/api-logs": "0.220.0",
     "@opentelemetry/context-async-hooks": "2.7.1",
@@ -68,7 +71,10 @@
     "@opentelemetry/sdk-trace-base": "2.7.1",
     "@types/express": "5.0.6",
     "@types/node": "25.9.5",
+    "ai": "5.0.269",
+    "express": "5.2.1",
     "tsx": "4.23.12",
-    "typescript": "6.0.3"
+    "typescript": "6.0.3",
+    "zod": "4.1.12"
   }
 }
