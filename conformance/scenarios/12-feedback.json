@@ -1,0 +1,95 @@
+{
+  "$schema": "../scenario.schema.json",
+  "name": "12-feedback",
+  "description": "feedback() writes one span. With a valid turn ref, the span is a child of the turn span. With no turn ref, or an invalid one, it joins a trace derived from the session. Each kind writes its typed attributes.",
+  "covers": [
+    "practice 6: feedback with turn.ref as its turn joins the turn's trace as a child of the turn span",
+    "practice 6: feedback joins its turn, not the span active when it is written",
+    "practice 6: a rating writes event.name and the feedback.* attributes FLS queries read, with reasons joined by commas",
+    "practice 6: namespace writes the typed attributes under its prefix, so tester ratings keep tester.*",
+    "practice 6: each behaviour signal writes its kind, its ADR 005 class and its typed attributes, and event.name defaults to feedback.<kind>",
+    "practice 6: attributes are written as given, after the typed ones, and an attribute cannot replace event.name",
+    "practice 6: feedback with a turn ref of another process joins that trace, under that span",
+    "practice 6: feedback with no turn ref joins one trace per session, derived from the session id, with a parent span that is never written",
+    "practice 6: feedback with an invalid turn ref joins its session's trace",
+    "practice 6: feedback with no turn ref and no session joins one session, and one trace, for the process",
+    "practice 6: the feedback span is INTERNAL, on the flywheel tracer, and starts and ends at the at time, default now",
+    "practice 6: feedback writes no log record by default"
+  ],
+  "setup": {
+    "clock": "2026-10-01T00:00:00.000Z",
+    "tracerProvider": true,
+    "loggerProvider": true,
+    "attributeCountLimit": 1024,
+    "sampler": "always_on"
+  },
+  "steps": [
+    { "op": "init" },
+    {
+      "op": "turn",
+      "ref": "turn",
+      "options": { "agent": "example-agent" },
+      "steps": [{ "op": "advanceClock", "ms": 100 }],
+      "record": { "query": "Can my landlord keep my bond?", "answer": "Your landlord must apply to VCAT." }
+    },
+    { "op": "advanceClock", "ms": 1000 },
+    {
+      "op": "span",
+      "name": "POST /feedback",
+      "kind": "SERVER",
+      "steps": [
+        {
+          "op": "feedback",
+          "turn": "turn",
+          "event": {
+            "kind": "rating",
+            "name": "user_feedback",
+            "session": "s1",
+            "rating": "down",
+            "reason": "wrong",
+            "reasons": ["wrong", "slow"],
+            "comment": "no",
+            "subject": { "kind": "answer", "id": "a1", "url": "https://example.org/a1" },
+            "actor": { "id": "u1", "kind": "person" },
+            "attributes": { "app.audience": "staff" }
+          }
+        }
+      ]
+    },
+    {
+      "op": "feedback",
+      "turn": "turn",
+      "event": {
+        "kind": "rating",
+        "name": "tester_feedback",
+        "session": "s1",
+        "namespace": "tester",
+        "ratings": { "faithfulness": 4, "relevance": 5 },
+        "comment": "ok",
+        "attributes": { "tester.question": "q" }
+      }
+    },
+    { "op": "feedback", "turn": "turn", "event": { "kind": "decision", "session": "s1", "decision": "reject", "reason": "off-topic" } },
+    { "op": "feedback", "turn": "turn", "event": { "kind": "edit", "session": "s1", "draft": "agent text", "text": "person text" } },
+    { "op": "feedback", "turn": "turn", "event": { "kind": "dwell", "session": "s1", "element": "sources", "dwellMs": 1500 } },
+    { "op": "feedback", "turn": "turn", "event": { "kind": "next_message", "session": "s1", "text": "that is wrong" } },
+    { "op": "feedback", "turn": "turn", "event": { "kind": "rating", "name": "renamed", "session": "s1", "rating": "up", "attributes": { "event.name": "other" } } },
+    {
+      "op": "feedback",
+      "event": {
+        "kind": "rating",
+        "name": "remote",
+        "session": "s1",
+        "rating": "up",
+        "turn": { "traceId": "0af7651916cd43dd8448eb211c80319c", "spanId": "b7ad6b7169203331" }
+      }
+    },
+    { "op": "feedback", "event": { "kind": "dwell", "name": "session-a", "session": "s1", "element": "x", "dwellMs": 1 } },
+    { "op": "feedback", "event": { "kind": "dwell", "name": "session-b", "session": "s1", "element": "y", "dwellMs": 2 } },
+    { "op": "feedback", "event": { "kind": "dwell", "name": "session-c", "session": "s2", "element": "x", "dwellMs": 1 } },
+    { "op": "feedback", "event": { "kind": "rating", "name": "invalid-ref", "session": "s1", "rating": "up", "turn": { "traceId": "nope", "spanId": "nope" } } },
+    { "op": "feedback", "event": { "kind": "rating", "name": "process-a", "rating": "up" } },
+    { "op": "feedback", "event": { "kind": "rating", "name": "process-b", "rating": "down" } },
+    { "op": "feedback", "turn": "turn", "event": { "kind": "rating", "name": "dated", "session": "s1", "rating": "up", "at": "2026-10-01T00:00:00.500Z" } }
+  ]
+}

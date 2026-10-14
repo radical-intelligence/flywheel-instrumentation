@@ -1,0 +1,360 @@
+{
+  "logRecords": [],
+  "results": [
+    {
+      "console": [],
+      "op": "init",
+      "step": "0"
+    },
+    {
+      "op": "advanceClock",
+      "step": "1.0.0.0"
+    },
+    {
+      "op": "timed",
+      "step": "1.0.0"
+    },
+    {
+      "op": "session",
+      "step": "1.0.1.0"
+    },
+    {
+      "op": "user",
+      "step": "1.0.1.1"
+    },
+    {
+      "op": "turnRef",
+      "ref": {
+        "spanId": "span:POST /chat > invoke_agent example-agent",
+        "traceId": "trace-2"
+      },
+      "step": "1.0.1.2"
+    },
+    {
+      "op": "getTraceId",
+      "step": "1.0.1.3",
+      "value": "trace-2"
+    },
+    {
+      "op": "advanceClock",
+      "step": "1.0.1.4.0.0"
+    },
+    {
+      "op": "mark",
+      "step": "1.0.1.4.0.1"
+    },
+    {
+      "op": "mark",
+      "step": "1.0.1.4.0.2"
+    },
+    {
+      "op": "markLast",
+      "step": "1.0.1.4.0.3"
+    },
+    {
+      "op": "advanceClock",
+      "step": "1.0.1.4.0.4"
+    },
+    {
+      "op": "markLast",
+      "step": "1.0.1.4.0.5"
+    },
+    {
+      "op": "markLast",
+      "step": "1.0.1.4.0.6"
+    },
+    {
+      "op": "span",
+      "step": "1.0.1.4.0"
+    },
+    {
+      "op": "turnRef",
+      "ref": {
+        "spanId": "span:POST /chat > invoke_agent example-agent > execute_tool lookup",
+        "traceId": "trace-2"
+      },
+      "step": "1.0.1.4.1.0"
+    },
+    {
+      "op": "advanceClock",
+      "step": "1.0.1.4.1.1.0"
+    },
+    {
+      "op": "handle",
+      "step": "1.0.1.4.1.1.1"
+    },
+    {
+      "op": "timed",
+      "step": "1.0.1.4.1.1"
+    },
+    {
+      "op": "span",
+      "step": "1.0.1.4.1"
+    },
+    {
+      "op": "advanceClock",
+      "step": "1.0.1.4.2.0"
+    },
+    {
+      "op": "mark",
+      "step": "1.0.1.4.2.1"
+    },
+    {
+      "op": "advanceClock",
+      "step": "1.0.1.4.2.2"
+    },
+    {
+      "op": "markLast",
+      "step": "1.0.1.4.2.3"
+    },
+    {
+      "op": "span",
+      "step": "1.0.1.4.2"
+    },
+    {
+      "op": "timed",
+      "step": "1.0.1.4"
+    },
+    {
+      "op": "recordUsage",
+      "step": "1.0.1.5"
+    },
+    {
+      "op": "handle",
+      "step": "1.0.1.6"
+    },
+    {
+      "op": "advanceClock",
+      "step": "1.0.1.7"
+    },
+    {
+      "op": "endRequest",
+      "step": "1.0.1.8"
+    },
+    {
+      "op": "setTimelineAttributes",
+      "step": "1.0.1.9",
+      "value": {
+        "app.timeline.chat.ms": 400,
+        "app.timeline.chat.start_ms": 5,
+        "app.timeline.chat.tool.lookup.ms": 30,
+        "app.timeline.chat.tool.lookup.start_ms": 125,
+        "app.timeline.mark.chat.firstChunk": 105,
+        "app.timeline.mark.chat.firstText": 205,
+        "app.timeline.mark.chat.lastToken": 405,
+        "app.timeline.mark.chat.tool.lookup.inputEnd": 125,
+        "app.timeline.mark.chat.tool.lookup.inputStart": 105,
+        "app.timeline.parse.ms": 5,
+        "app.timeline.parse.start_ms": 0,
+        "app.timeline.request.ms": 408,
+        "app.timeline.request.start_ms": 0,
+        "app.timeline.usage.inputTokens": 120,
+        "app.timeline.usage.outputTokens": 40,
+        "app.timeline.usage.outputTokensPerSecond": 133.3,
+        "app.timeline.usage.reasoningTokens": 0
+      }
+    },
+    {
+      "op": "turn",
+      "ref": {
+        "spanId": "span:POST /chat > invoke_agent example-agent",
+        "traceId": "trace-2"
+      },
+      "returned": "done",
+      "step": "1.0.1"
+    },
+    {
+      "op": "timelineJSON",
+      "step": "1.0.2",
+      "value": {
+        "marks": {
+          "chat.firstChunk": 105,
+          "chat.firstText": 205,
+          "chat.lastToken": 405,
+          "chat.tool.lookup.inputEnd": 125,
+          "chat.tool.lookup.inputStart": 105
+        },
+        "spans": [
+          {
+            "endMs": 408,
+            "name": "request",
+            "startMs": 0
+          },
+          {
+            "endMs": 5,
+            "name": "parse",
+            "startMs": 0
+          },
+          {
+            "endMs": 405,
+            "name": "chat",
+            "startMs": 5
+          },
+          {
+            "endMs": 155,
+            "name": "chat.tool.lookup",
+            "startMs": 125
+          }
+        ],
+        "usage": {
+          "inputTokens": 120,
+          "outputTokens": 40,
+          "outputTokensPerSecond": 133.3,
+          "reasoningTokens": 0
+        }
+      }
+    },
+    {
+      "op": "withTimeline",
+      "step": "1.0"
+    },
+    {
+      "op": "span",
+      "step": "1"
+    }
+  ],
+  "scenario": "06-turn-full",
+  "spans": [
+    {
+      "attributes": {
+        "flywheel.attribute_count_limit": 1024,
+        "flywheel.schema.attribute_count": 30,
+        "flywheel.schema.node_count": 2,
+        "flywheel.self_check.issues": [],
+        "flywheel.self_check.ok": true,
+        "flywheel.version": "<version>"
+      },
+      "durationMs": 0,
+      "events": [],
+      "kind": "INTERNAL",
+      "name": "flywheel.startup",
+      "parent": null,
+      "path": "flywheel.startup",
+      "scope": "flywheel",
+      "startMs": 0,
+      "status": {
+        "code": "UNSET"
+      },
+      "trace": "trace-1"
+    },
+    {
+      "attributes": {},
+      "durationMs": 120,
+      "events": [],
+      "kind": "CLIENT",
+      "name": "chat mock-model",
+      "parent": "span:POST /chat > invoke_agent example-agent",
+      "path": "POST /chat > invoke_agent example-agent > chat mock-model",
+      "scope": "conformance",
+      "startMs": 5,
+      "status": {
+        "code": "UNSET"
+      },
+      "trace": "trace-2"
+    },
+    {
+      "attributes": {
+        "app.tool.lookup.result_count": 1,
+        "app.tool.lookup.status": "ok",
+        "app.tool.lookup.topic": "opening hours"
+      },
+      "durationMs": 30,
+      "events": [],
+      "kind": "INTERNAL",
+      "name": "execute_tool lookup",
+      "parent": "span:POST /chat > invoke_agent example-agent",
+      "path": "POST /chat > invoke_agent example-agent > execute_tool lookup",
+      "scope": "conformance",
+      "startMs": 125,
+      "status": {
+        "code": "UNSET"
+      },
+      "trace": "trace-2"
+    },
+    {
+      "attributes": {},
+      "durationMs": 250,
+      "events": [],
+      "kind": "CLIENT",
+      "name": "chat mock-model",
+      "parent": "span:POST /chat > invoke_agent example-agent",
+      "path": "POST /chat > invoke_agent example-agent > chat mock-model #2",
+      "scope": "conformance",
+      "startMs": 155,
+      "status": {
+        "code": "UNSET"
+      },
+      "trace": "trace-2"
+    },
+    {
+      "attributes": {
+        "app.model.answer.finish_reason": "stop",
+        "app.model.answer.step_count": 2,
+        "app.timeline.chat.ms": 400,
+        "app.timeline.chat.start_ms": 5,
+        "app.timeline.chat.tool.lookup.ms": 30,
+        "app.timeline.chat.tool.lookup.start_ms": 125,
+        "app.timeline.mark.chat.firstChunk": 105,
+        "app.timeline.mark.chat.firstText": 205,
+        "app.timeline.mark.chat.lastToken": 405,
+        "app.timeline.mark.chat.tool.lookup.inputEnd": 125,
+        "app.timeline.mark.chat.tool.lookup.inputStart": 105,
+        "app.timeline.parse.ms": 5,
+        "app.timeline.parse.start_ms": 0,
+        "app.timeline.request.ms": 408,
+        "app.timeline.request.start_ms": 0,
+        "app.timeline.usage.inputTokens": 120,
+        "app.timeline.usage.outputTokens": 40,
+        "app.timeline.usage.outputTokensPerSecond": 133.3,
+        "app.timeline.usage.reasoningTokens": 0,
+        "app.turn.answer": "The office opens from 09:00 to 17:00, Monday to Friday.",
+        "app.turn.guardrail.used_lookup.passed": true,
+        "app.turn.message_count": 4,
+        "app.turn.messages": "[{\"role\":\"user\",\"content\":\"What are the opening hours?\"},{\"role\":\"assistant\",\"content\":\"\",\"toolCalls\":[{\"toolName\":\"lookup\",\"input\":{\"topic\":\"opening hours\"},\"toolCallId\":\"call-1\"}]},{\"role\":\"tool\",\"content\":\"[\\\"The office opens from 09:00 to 17:00, Monday to Friday.\\\"]\",\"toolName\":\"lookup\",\"toolCallId\":\"call-1\"},{\"role\":\"assistant\",\"content\":\"The office opens from 09:00 to 17:00, Monday to Friday.\"}]",
+        "app.turn.ms": 403,
+        "app.turn.outcome": "answered",
+        "app.turn.query": "What are the opening hours?",
+        "app.turn.timing.chat": 400,
+        "app.turn.timing.chat.tool.lookup": 30,
+        "app.turn.timing.parse": 5,
+        "app.turn.timing.request": 408,
+        "app.turn.tool_called": true,
+        "enduser.id": "user-7f3a",
+        "gen_ai.agent.name": "example-agent",
+        "gen_ai.conversation.id": "conv-1",
+        "gen_ai.operation.name": "invoke_agent",
+        "gen_ai.request.model": "mock-model",
+        "gen_ai.usage.input_tokens": 120,
+        "gen_ai.usage.output_tokens": 40,
+        "session.id": "conv-1"
+      },
+      "durationMs": 403,
+      "events": [],
+      "kind": "INTERNAL",
+      "name": "invoke_agent example-agent",
+      "parent": "span:POST /chat",
+      "path": "POST /chat > invoke_agent example-agent",
+      "scope": "flywheel",
+      "startMs": 5,
+      "status": {
+        "code": "UNSET"
+      },
+      "trace": "trace-2"
+    },
+    {
+      "attributes": {},
+      "durationMs": 408,
+      "events": [],
+      "kind": "SERVER",
+      "name": "POST /chat",
+      "parent": null,
+      "path": "POST /chat",
+      "scope": "conformance",
+      "startMs": 0,
+      "status": {
+        "code": "UNSET"
+      },
+      "trace": "trace-2"
+    }
+  ]
+}

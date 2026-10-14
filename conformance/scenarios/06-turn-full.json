@@ -1,0 +1,162 @@
+{
+  "$schema": "../scenario.schema.json",
+  "name": "06-turn-full",
+  "description": "One full turn inside a request: a model call, a tool call with a schema handle, the request timeline with marks and usage, and the turn record. It follows examples/agent/app.ts.",
+  "notes": "The model call and the tool call are manual spans, named as the OpenTelemetry GenAI conventions name them (chat {model}, execute_tool {tool}). The AI SDK spans and their ai.* attributes are TypeScript only, and test/example.test.ts checks them.",
+  "covers": [
+    "practice 1: one turn exports one root span named invoke_agent {agent}, of kind INTERNAL, on the flywheel tracer",
+    "practice 1: turn() writes gen_ai.operation.name, gen_ai.agent.name and gen_ai.conversation.id on the turn span",
+    "practice 1: inside an active request span, the turn span is its child, and model calls inside fn are children of the turn span",
+    "practice 1: the turn record goes on the turn span when fn settles, with the messages as JSON and tool_called true when a message has a tool call",
+    "practice 1: the outcome defaults to answered, and ms defaults to the time fn took",
+    "practice 1: the request timeline fills the turn timings and usage when the record leaves them out",
+    "practice 1: turn.ref holds the trace ID and span ID of the turn span, and getTraceId() returns its trace",
+    "practice 1: inside fn, turnRef() returns turn.ref until a child span is active",
+    "practice 2: timed spans take the scope as a prefix, and the request span opens at zero and closes on endRequest",
+    "practice 2: sequential step offsets add up to the request time on the scenario clock",
+    "practice 2: recordUsage records token counts and output tokens per second over the visible stream",
+    "practice 2: set(timelineAttributes(payload)) puts the same timeline on the span as app.timeline.*",
+    "practice 3: a schema handle writes app.<type>.<name>.<key> on the active span, here the tool call and the turn span",
+    "practice 3: user(id) and session(id) set enduser.id and session.id on the active span"
+  ],
+  "setup": {
+    "clock": "2026-10-01T00:00:00.000Z",
+    "tracerProvider": true,
+    "loggerProvider": true,
+    "attributeCountLimit": 1024,
+    "sampler": "always_on"
+  },
+  "steps": [
+    {
+      "op": "init",
+      "options": {
+        "schemas": {
+          "tool": {
+            "lookup": {
+              "attributes": {
+                "status": { "type": "enum", "values": ["ok", "empty"] },
+                "result_count": { "type": "count" },
+                "topic": { "type": "string", "maxLength": 64 }
+              }
+            }
+          },
+          "model": {
+            "answer": {
+              "attributes": {
+                "finish_reason": { "type": "enum", "values": ["stop", "length", "content-filter", "tool-calls", "error", "other", "unknown"] },
+                "step_count": { "type": "count" }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "op": "span",
+      "name": "POST /chat",
+      "kind": "SERVER",
+      "steps": [
+        {
+          "op": "withTimeline",
+          "timeline": "request",
+          "request": true,
+          "steps": [
+            { "op": "timed", "name": "parse", "steps": [{ "op": "advanceClock", "ms": 5 }] },
+            {
+              "op": "turn",
+              "ref": "turn",
+              "options": { "agent": "example-agent", "conversationId": "conv-1", "model": "mock-model", "timeline": "request" },
+              "steps": [
+                { "op": "session", "id": "conv-1" },
+                { "op": "user", "id": "user-7f3a" },
+                { "op": "turnRef" },
+                { "op": "getTraceId" },
+                {
+                  "op": "timed",
+                  "name": "chat",
+                  "steps": [
+                    {
+                      "op": "span",
+                      "name": "chat mock-model",
+                      "kind": "CLIENT",
+                      "steps": [
+                        { "op": "advanceClock", "ms": 100 },
+                        { "op": "mark", "name": "chat.firstChunk" },
+                        { "op": "mark", "name": "chat.tool.lookup.inputStart" },
+                        { "op": "markLast", "name": "chat.lastToken" },
+                        { "op": "advanceClock", "ms": 20 },
+                        { "op": "markLast", "name": "chat.lastToken" },
+                        { "op": "markLast", "name": "chat.tool.lookup.inputEnd" }
+                      ]
+                    },
+                    {
+                      "op": "span",
+                      "name": "execute_tool lookup",
+                      "steps": [
+                        { "op": "turnRef" },
+                        {
+                          "op": "timed",
+                          "name": "tool.lookup",
+                          "steps": [
+                            { "op": "advanceClock", "ms": 30 },
+                            { "op": "handle", "type": "tool", "name": "lookup", "schema": {
+                              "attributes": {
+                                "status": { "type": "enum", "values": ["ok", "empty"] },
+                                "result_count": { "type": "count" },
+                                "topic": { "type": "string", "maxLength": 64 }
+                              }
+                            }, "attributes": { "status": "ok", "result_count": 1, "topic": "opening hours" } }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "op": "span",
+                      "name": "chat mock-model",
+                      "kind": "CLIENT",
+                      "steps": [
+                        { "op": "advanceClock", "ms": 50 },
+                        { "op": "mark", "name": "chat.firstText" },
+                        { "op": "advanceClock", "ms": 200 },
+                        { "op": "markLast", "name": "chat.lastToken" }
+                      ]
+                    }
+                  ]
+                },
+                { "op": "recordUsage", "timeline": "request", "usage": { "inputTokens": 120, "outputTokens": 40, "outputTokenDetails": { "reasoningTokens": 0 } } },
+                {
+                  "op": "handle",
+                  "type": "model",
+                  "name": "answer",
+                  "schema": {
+                    "attributes": {
+                      "finish_reason": { "type": "enum", "values": ["stop", "length", "content-filter", "tool-calls", "error", "other", "unknown"] },
+                      "step_count": { "type": "count" }
+                    }
+                  },
+                  "attributes": { "finish_reason": "stop", "step_count": 2 }
+                },
+                { "op": "advanceClock", "ms": 3 },
+                { "op": "endRequest", "timeline": "request" },
+                { "op": "setTimelineAttributes", "timeline": "request" }
+              ],
+              "record": {
+                "query": "What are the opening hours?",
+                "messages": [
+                  { "role": "user", "content": "What are the opening hours?" },
+                  { "role": "assistant", "content": "", "toolCalls": [{ "toolName": "lookup", "input": { "topic": "opening hours" }, "toolCallId": "call-1" }] },
+                  { "role": "tool", "content": "[\"The office opens from 09:00 to 17:00, Monday to Friday.\"]", "toolName": "lookup", "toolCallId": "call-1" },
+                  { "role": "assistant", "content": "The office opens from 09:00 to 17:00, Monday to Friday." }
+                ],
+                "answer": "The office opens from 09:00 to 17:00, Monday to Friday.",
+                "guardrails": [{ "name": "used_lookup", "passed": true }]
+              },
+              "return": "done"
+            },
+            { "op": "timelineJSON", "timeline": "request" }
+          ]
+        }
+      ]
+    }
+  ]
+}

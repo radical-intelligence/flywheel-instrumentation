@@ -1,0 +1,168 @@
+{
+  "$schema": "../scenario.schema.json",
+  "name": "09-schema-handles",
+  "description": "Node handles, set(), user() and session(): what each writes, how a schema handle checks and cuts each value, and how it reports an invalid write.",
+  "covers": [
+    "practice 3: node handles with no schema keep string, number, boolean and array values as given, under app.<type>.<name>.<key> only",
+    "practice 3: set writes each key as given, with no prefix",
+    "practice 3: a later write to the same key replaces the earlier value",
+    "practice 3: writes go to the active span only",
+    "practice 3: a schema handle writes declared keys as app.<type>.<name>.<key> only",
+    "practice 3: a schema handle drops an undeclared key, an enum value outside the declared values, a value of the wrong type, and a count that is not a non-negative integer, and names each in flywheel.attribute_error",
+    "practice 3: flywheel.attribute_error names each dropped key once, across writes on one span, and the valid keys of the same write are written",
+    "practice 3: a schema handle cuts a string, and each item of a string array, at the key maxLength, else the schema maxLength, else 1024, and sets <key>.truncated",
+    "practice 3: user(id) and session(id) set enduser.id and session.id, and an empty or non-string id is dropped and named in flywheel.attribute_error",
+    "practice 3: with no active span, schema handles, user() and session() write nothing and do not throw",
+    "practice 4: with no active span, getTraceId() is undefined"
+  ],
+  "setup": {
+    "clock": "2026-10-01T00:00:00.000Z",
+    "tracerProvider": true,
+    "loggerProvider": true,
+    "attributeCountLimit": 1024,
+    "sampler": "always_on"
+  },
+  "steps": [
+    { "op": "init" },
+    {
+      "op": "span",
+      "name": "plain",
+      "steps": [
+        { "op": "handle", "type": "tool", "name": "search", "attributes": { "status": "ok", "count": 3, "cached": true, "chapters": ["a", "b"] } },
+        { "op": "handle", "type": "model", "name": "analysis", "attributes": { "ttft_ms": 120.5 } },
+        { "op": "handle", "type": "agent", "name": "planner", "attributes": { "step": "plan" } },
+        { "op": "set", "attributes": { "app.request.route": "/chat", "custom.flag": true } },
+        { "op": "set", "attributes": { "app.request.route": "/feedback" } },
+        { "op": "handle", "type": "tool", "name": "search", "attributes": { "count": 4 } },
+        { "op": "getTraceId" }
+      ]
+    },
+    {
+      "op": "span",
+      "name": "parent",
+      "steps": [
+        { "op": "span", "name": "child", "steps": [{ "op": "set", "attributes": { "app.child": true } }] },
+        { "op": "set", "attributes": { "app.parent": true } }
+      ]
+    },
+    {
+      "op": "span",
+      "name": "schema",
+      "steps": [
+        {
+          "op": "handle",
+          "type": "tool",
+          "name": "search",
+          "schema": {
+            "attributes": {
+              "status": { "type": "enum", "values": ["ok", "empty", "error"] },
+              "result_count": { "type": "count" },
+              "latency_ms": { "type": "number" },
+              "cached": { "type": "boolean" },
+              "query": { "type": "string" },
+              "note": { "type": "string", "maxLength": 4 },
+              "chapters": { "type": "string[]" }
+            }
+          },
+          "attributes": {
+            "status": "ok",
+            "result_count": 0,
+            "latency_ms": -12.5,
+            "cached": false,
+            "query": { "$repeat": { "text": "q", "count": 1030 } },
+            "note": "abcdef",
+            "chapters": ["Tenancy", "Fines"]
+          }
+        },
+        {
+          "op": "handle",
+          "type": "agent",
+          "name": "planner",
+          "schema": {
+            "maxLength": 3,
+            "attributes": {
+              "title": { "type": "string" },
+              "tags": { "type": "string[]" },
+              "code": { "type": "string", "maxLength": 6 },
+              "short": { "type": "string" }
+            }
+          },
+          "attributes": { "title": "abcdef", "tags": ["abcd", "ab"], "code": "abcdefgh", "short": "abc" }
+        }
+      ]
+    },
+    {
+      "op": "span",
+      "name": "invalid",
+      "steps": [
+        {
+          "op": "handle",
+          "type": "tool",
+          "name": "search",
+          "schema": {
+            "attributes": {
+              "status": { "type": "enum", "values": ["ok", "empty", "error"] },
+              "result_count": { "type": "count" },
+              "latency_ms": { "type": "number" },
+              "cached": { "type": "boolean" },
+              "query": { "type": "string" },
+              "chapters": { "type": "string[]" }
+            }
+          },
+          "attributes": {
+            "status": "maybe",
+            "undeclared": 1,
+            "result_count": 1.5,
+            "latency_ms": "fast",
+            "cached": "yes",
+            "query": 7,
+            "chapters": ["a", 1]
+          }
+        },
+        {
+          "op": "handle",
+          "type": "tool",
+          "name": "search",
+          "schema": {
+            "attributes": {
+              "status": { "type": "enum", "values": ["ok", "empty", "error"] },
+              "result_count": { "type": "count" },
+              "latency_ms": { "type": "number" },
+              "cached": { "type": "boolean" }
+            }
+          },
+          "attributes": { "status": "maybe", "result_count": -1, "latency_ms": { "$number": "Infinity" }, "cached": true }
+        }
+      ]
+    },
+    {
+      "op": "span",
+      "name": "ids",
+      "steps": [
+        { "op": "user", "id": "user-7f3a" },
+        { "op": "session", "id": "session-1" }
+      ]
+    },
+    {
+      "op": "span",
+      "name": "invalid-ids",
+      "steps": [
+        { "op": "user", "id": "" },
+        { "op": "session", "id": 42 },
+        { "op": "user", "id": null }
+      ]
+    },
+    {
+      "op": "handle",
+      "type": "tool",
+      "name": "search",
+      "schema": { "attributes": { "status": { "type": "enum", "values": ["ok"] } } },
+      "attributes": { "status": "ok", "undeclared": 1 }
+    },
+    { "op": "handle", "type": "tool", "name": "search", "attributes": { "status": "ok" } },
+    { "op": "set", "attributes": { "app.request.route": "/chat" } },
+    { "op": "user", "id": "user-7f3a" },
+    { "op": "session", "id": "" },
+    { "op": "getTraceId" }
+  ]
+}

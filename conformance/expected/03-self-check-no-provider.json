@@ -1,0 +1,494 @@
+{
+  "logRecords": [],
+  "results": [
+    {
+      "console": [
+        {
+          "level": "error",
+          "text": "flywheel self-check: no_tracer_provider: no tracer provider is registered, so every span and attribute is dropped"
+        }
+      ],
+      "op": "init",
+      "step": "0"
+    },
+    {
+      "op": "selfCheck",
+      "step": "1",
+      "value": {
+        "attributeCountLimit": {
+          "source": "default",
+          "value": 128
+        },
+        "attributeCounts": {
+          "nodes": {
+            "agent.planner": 2
+          },
+          "turn": 26
+        },
+        "issues": [
+          {
+            "code": "no_tracer_provider",
+            "level": "error",
+            "message": "no tracer provider is registered, so every span and attribute is dropped"
+          }
+        ],
+        "loggerProvider": false,
+        "ok": false,
+        "startupSpan": null,
+        "tracerProvider": false,
+        "valueSizeLimit": 8192
+      }
+    },
+    {
+      "console": [
+        {
+          "level": "error",
+          "text": "flywheel self-check: no_tracer_provider: no tracer provider is registered, so every span and attribute is dropped"
+        }
+      ],
+      "error": {
+        "message": "flywheel: self-check failed: no_tracer_provider",
+        "name": "Error"
+      },
+      "op": "init",
+      "step": "2"
+    },
+    {
+      "op": "manifest",
+      "step": "3",
+      "value": {
+        "attributes": [
+          {
+            "maxLength": 1024,
+            "name": "app.agent.planner.goal",
+            "source": "agent.planner",
+            "type": "string"
+          },
+          {
+            "name": "app.agent.planner.goal.truncated",
+            "source": "agent.planner",
+            "type": "boolean"
+          },
+          {
+            "name": "app.turn.answer",
+            "source": "turn",
+            "type": "string"
+          },
+          {
+            "name": "app.turn.answer.truncated",
+            "source": "turn",
+            "type": "boolean"
+          },
+          {
+            "name": "app.turn.guardrail.<name>.passed",
+            "source": "turn",
+            "type": "boolean"
+          },
+          {
+            "name": "app.turn.guardrail.<name>.reason",
+            "source": "turn",
+            "type": "string"
+          },
+          {
+            "name": "app.turn.guardrail.<name>.reason.truncated",
+            "source": "turn",
+            "type": "boolean"
+          },
+          {
+            "name": "app.turn.message_count",
+            "source": "turn",
+            "type": "count"
+          },
+          {
+            "name": "app.turn.messages",
+            "source": "turn",
+            "type": "string"
+          },
+          {
+            "name": "app.turn.messages.truncated",
+            "source": "turn",
+            "type": "boolean"
+          },
+          {
+            "name": "app.turn.ms",
+            "source": "turn",
+            "type": "number"
+          },
+          {
+            "name": "app.turn.outcome",
+            "source": "turn",
+            "type": "enum",
+            "values": [
+              "answered",
+              "refused",
+              "error",
+              "aborted"
+            ]
+          },
+          {
+            "name": "app.turn.query",
+            "source": "turn",
+            "type": "string"
+          },
+          {
+            "name": "app.turn.query.truncated",
+            "source": "turn",
+            "type": "boolean"
+          },
+          {
+            "name": "app.turn.timing.<step>",
+            "source": "turn",
+            "type": "number"
+          },
+          {
+            "name": "app.turn.tool_called",
+            "source": "turn",
+            "type": "boolean"
+          },
+          {
+            "name": "enduser.id",
+            "source": "core",
+            "type": "string"
+          },
+          {
+            "name": "flywheel.attribute_error",
+            "source": "core",
+            "type": "string[]"
+          },
+          {
+            "name": "gen_ai.agent.name",
+            "source": "turn",
+            "type": "string"
+          },
+          {
+            "name": "gen_ai.conversation.id",
+            "source": "turn",
+            "type": "string"
+          },
+          {
+            "name": "gen_ai.operation.name",
+            "source": "turn",
+            "type": "enum",
+            "values": [
+              "invoke_agent"
+            ]
+          },
+          {
+            "name": "gen_ai.request.model",
+            "source": "turn",
+            "type": "string"
+          },
+          {
+            "name": "gen_ai.request.model.truncated",
+            "source": "turn",
+            "type": "boolean"
+          },
+          {
+            "name": "gen_ai.usage.input_tokens",
+            "source": "turn",
+            "type": "count"
+          },
+          {
+            "name": "gen_ai.usage.output_tokens",
+            "source": "turn",
+            "type": "count"
+          },
+          {
+            "name": "session.id",
+            "source": "core",
+            "type": "string"
+          }
+        ],
+        "manifestVersion": 1,
+        "package": {
+          "name": "<package>",
+          "version": "<version>"
+        }
+      }
+    },
+    {
+      "op": "env",
+      "step": "4"
+    },
+    {
+      "op": "selfCheck",
+      "step": "5",
+      "value": {
+        "attributeCountLimit": {
+          "source": "env",
+          "value": 20
+        },
+        "attributeCounts": {
+          "nodes": {
+            "agent.planner": 2
+          },
+          "turn": 26
+        },
+        "issues": [
+          {
+            "code": "no_tracer_provider",
+            "level": "error",
+            "message": "no tracer provider is registered, so every span and attribute is dropped"
+          },
+          {
+            "code": "attribute_count_limit",
+            "level": "warning",
+            "message": "one turn can write 26 attribute names, over the span attribute count limit of 20"
+          }
+        ],
+        "loggerProvider": false,
+        "ok": false,
+        "startupSpan": null,
+        "tracerProvider": false,
+        "valueSizeLimit": 8192
+      }
+    },
+    {
+      "console": [
+        {
+          "level": "error",
+          "text": "flywheel self-check: no_tracer_provider: no tracer provider is registered, so every span and attribute is dropped"
+        },
+        {
+          "level": "error",
+          "text": "flywheel self-check: no_logger_provider: no logger provider is registered, so log records are dropped"
+        },
+        {
+          "level": "warn",
+          "text": "flywheel self-check: attribute_count_limit: one turn can write 24 attribute names, over the span attribute count limit of 20"
+        }
+      ],
+      "op": "init",
+      "step": "6"
+    },
+    {
+      "op": "selfCheck",
+      "step": "7",
+      "value": {
+        "attributeCountLimit": {
+          "source": "env",
+          "value": 20
+        },
+        "attributeCounts": {
+          "nodes": {},
+          "turn": 24
+        },
+        "issues": [
+          {
+            "code": "no_tracer_provider",
+            "level": "error",
+            "message": "no tracer provider is registered, so every span and attribute is dropped"
+          },
+          {
+            "code": "no_logger_provider",
+            "level": "error",
+            "message": "no logger provider is registered, so log records are dropped"
+          },
+          {
+            "code": "attribute_count_limit",
+            "level": "warning",
+            "message": "one turn can write 24 attribute names, over the span attribute count limit of 20"
+          }
+        ],
+        "loggerProvider": false,
+        "ok": false,
+        "startupSpan": null,
+        "tracerProvider": false,
+        "valueSizeLimit": 8192
+      }
+    },
+    {
+      "op": "env",
+      "step": "8"
+    },
+    {
+      "console": [
+        {
+          "level": "error",
+          "text": "flywheel self-check: no_tracer_provider: no tracer provider is registered, so every span and attribute is dropped"
+        },
+        {
+          "level": "error",
+          "text": "flywheel self-check: no_logger_provider: no logger provider is registered, so log records are dropped"
+        }
+      ],
+      "op": "init",
+      "step": "9"
+    },
+    {
+      "op": "selfCheck",
+      "step": "10",
+      "value": {
+        "attributeCountLimit": {
+          "source": "default",
+          "value": 128
+        },
+        "attributeCounts": {
+          "nodes": {},
+          "turn": 24
+        },
+        "issues": [
+          {
+            "code": "no_tracer_provider",
+            "level": "error",
+            "message": "no tracer provider is registered, so every span and attribute is dropped"
+          },
+          {
+            "code": "no_logger_provider",
+            "level": "error",
+            "message": "no logger provider is registered, so log records are dropped"
+          }
+        ],
+        "loggerProvider": false,
+        "ok": false,
+        "startupSpan": null,
+        "tracerProvider": false,
+        "valueSizeLimit": 8192
+      }
+    },
+    {
+      "op": "manifest",
+      "step": "11",
+      "value": {
+        "attributes": [
+          {
+            "name": "app.turn.answer",
+            "source": "turn",
+            "type": "string"
+          },
+          {
+            "name": "app.turn.answer.truncated",
+            "source": "turn",
+            "type": "boolean"
+          },
+          {
+            "name": "app.turn.guardrail.<name>.passed",
+            "source": "turn",
+            "type": "boolean"
+          },
+          {
+            "name": "app.turn.guardrail.<name>.reason",
+            "source": "turn",
+            "type": "string"
+          },
+          {
+            "name": "app.turn.guardrail.<name>.reason.truncated",
+            "source": "turn",
+            "type": "boolean"
+          },
+          {
+            "name": "app.turn.message_count",
+            "source": "turn",
+            "type": "count"
+          },
+          {
+            "name": "app.turn.messages",
+            "source": "turn",
+            "type": "string"
+          },
+          {
+            "name": "app.turn.messages.truncated",
+            "source": "turn",
+            "type": "boolean"
+          },
+          {
+            "name": "app.turn.ms",
+            "source": "turn",
+            "type": "number"
+          },
+          {
+            "name": "app.turn.outcome",
+            "source": "turn",
+            "type": "enum",
+            "values": [
+              "answered",
+              "refused",
+              "error",
+              "aborted"
+            ]
+          },
+          {
+            "name": "app.turn.query",
+            "source": "turn",
+            "type": "string"
+          },
+          {
+            "name": "app.turn.query.truncated",
+            "source": "turn",
+            "type": "boolean"
+          },
+          {
+            "name": "app.turn.timing.<step>",
+            "source": "turn",
+            "type": "number"
+          },
+          {
+            "name": "app.turn.tool_called",
+            "source": "turn",
+            "type": "boolean"
+          },
+          {
+            "name": "enduser.id",
+            "source": "core",
+            "type": "string"
+          },
+          {
+            "name": "flywheel.attribute_error",
+            "source": "core",
+            "type": "string[]"
+          },
+          {
+            "name": "gen_ai.agent.name",
+            "source": "turn",
+            "type": "string"
+          },
+          {
+            "name": "gen_ai.conversation.id",
+            "source": "turn",
+            "type": "string"
+          },
+          {
+            "name": "gen_ai.operation.name",
+            "source": "turn",
+            "type": "enum",
+            "values": [
+              "invoke_agent"
+            ]
+          },
+          {
+            "name": "gen_ai.request.model",
+            "source": "turn",
+            "type": "string"
+          },
+          {
+            "name": "gen_ai.request.model.truncated",
+            "source": "turn",
+            "type": "boolean"
+          },
+          {
+            "name": "gen_ai.usage.input_tokens",
+            "source": "turn",
+            "type": "count"
+          },
+          {
+            "name": "gen_ai.usage.output_tokens",
+            "source": "turn",
+            "type": "count"
+          },
+          {
+            "name": "session.id",
+            "source": "core",
+            "type": "string"
+          }
+        ],
+        "manifestVersion": 1,
+        "package": {
+          "name": "<package>",
+          "version": "<version>"
+        }
+      }
+    }
+  ],
+  "scenario": "03-self-check-no-provider",
+  "spans": []
+}

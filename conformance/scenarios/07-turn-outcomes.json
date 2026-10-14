@@ -1,0 +1,64 @@
+{
+  "$schema": "../scenario.schema.json",
+  "name": "07-turn-outcomes",
+  "description": "How a turn ends: a caller outcome stays, an error sets error and the span status, an AbortError sets aborted, and an invalid outcome, timing or token count is dropped and named in flywheel.attribute_error.",
+  "covers": [
+    "practice 1: a caller outcome stays",
+    "practice 1: an error inside the turn sets the outcome to error, the span status to ERROR, records the exception, and is rethrown",
+    "practice 1: an AbortError inside the turn sets the outcome to aborted",
+    "practice 1: an outcome outside the enum, or a timing or token count of the wrong type, is dropped and named in flywheel.attribute_error",
+    "practice 1: with no conversation id, the turn span has no gen_ai.conversation.id",
+    "practice 1: with no messages, there is no app.turn.messages, the message count is 0 and tool_called is false",
+    "practice 1: a caller toolCalled stays, and record.timings and record.usage replace the timeline values"
+  ],
+  "setup": {
+    "clock": "2026-10-01T00:00:00.000Z",
+    "tracerProvider": true,
+    "loggerProvider": true,
+    "attributeCountLimit": 1024,
+    "sampler": "always_on"
+  },
+  "steps": [
+    { "op": "init" },
+    { "op": "turn", "options": { "agent": "refuser" }, "record": { "outcome": "refused", "answer": "That is out of scope." } },
+    {
+      "op": "turn",
+      "options": { "agent": "failing", "model": "gpt-4.1" },
+      "steps": [{ "op": "advanceClock", "ms": 250 }],
+      "record": { "query": "q" },
+      "throw": { "name": "Error", "message": "model timed out" }
+    },
+    { "op": "turn", "options": { "agent": "aborting" }, "throw": { "name": "AbortError", "message": "client closed" } },
+    {
+      "op": "turn",
+      "options": { "agent": "invalid" },
+      "record": {
+        "outcome": "maybe",
+        "ms": "slow",
+        "timings": { "search": "fast", "generate": 900 },
+        "usage": { "inputTokens": -1, "outputTokens": 1.5 }
+      }
+    },
+    {
+      "op": "withTimeline",
+      "timeline": "request",
+      "steps": [
+        {
+          "op": "turn",
+          "options": { "agent": "explicit", "timeline": "request" },
+          "steps": [
+            { "op": "timed", "name": "search", "steps": [{ "op": "advanceClock", "ms": 40 }] },
+            { "op": "timelineSet", "name": "inputTokens", "value": 900 },
+            { "op": "timelineSet", "name": "outputTokens", "value": 120 }
+          ],
+          "record": {
+            "toolCalled": true,
+            "timings": { "retrieve": 12.5 },
+            "usage": { "inputTokens": 10 },
+            "ms": 1100
+          }
+        }
+      ]
+    }
+  ]
+}

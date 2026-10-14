@@ -1,0 +1,111 @@
+{
+  "logRecords": [],
+  "results": [
+    {
+      "console": [],
+      "op": "init",
+      "step": "0"
+    },
+    {
+      "op": "turn",
+      "ref": {
+        "spanId": "span:invoke_agent short",
+        "traceId": "trace-2"
+      },
+      "returned": null,
+      "step": "1"
+    },
+    {
+      "op": "turn",
+      "ref": {
+        "spanId": "span:invoke_agent long",
+        "traceId": "trace-3"
+      },
+      "returned": null,
+      "step": "2"
+    }
+  ],
+  "scenario": "08-turn-truncation",
+  "spans": [
+    {
+      "attributes": {
+        "flywheel.attribute_count_limit": 1024,
+        "flywheel.schema.attribute_count": 24,
+        "flywheel.schema.node_count": 0,
+        "flywheel.self_check.issues": [],
+        "flywheel.self_check.ok": true,
+        "flywheel.version": "<version>"
+      },
+      "durationMs": 0,
+      "events": [],
+      "kind": "INTERNAL",
+      "name": "flywheel.startup",
+      "parent": null,
+      "path": "flywheel.startup",
+      "scope": "flywheel",
+      "startMs": 0,
+      "status": {
+        "code": "UNSET"
+      },
+      "trace": "trace-1"
+    },
+    {
+      "attributes": {
+        "app.turn.answer": "abc",
+        "app.turn.guardrail.pii.passed": true,
+        "app.turn.guardrail.scope.passed": false,
+        "app.turn.guardrail.scope.reason": "out o",
+        "app.turn.guardrail.scope.reason.truncated": true,
+        "app.turn.message_count": 4,
+        "app.turn.messages": "[{\"role\":\"user\",\"content\":\"abcde\"},{\"role\":\"assistant\",\"content\":\"\",\"toolCalls\":[{\"toolName\":\"search\",\"input\":{\"query\":\"a query longer than five\"},\"toolCallId\":\"c1\"}]},{\"role\":\"tool\",\"content\":\"3 chu\",\"toolName\":\"search\",\"toolCallId\":\"c1\"},{\"role\":\"assistant\",\"content\":\"abc\"}]",
+        "app.turn.messages.truncated": true,
+        "app.turn.ms": 0,
+        "app.turn.outcome": "answered",
+        "app.turn.query": "abcde",
+        "app.turn.query.truncated": true,
+        "app.turn.tool_called": true,
+        "gen_ai.agent.name": "short",
+        "gen_ai.operation.name": "invoke_agent",
+        "gen_ai.request.model": "gpt-4",
+        "gen_ai.request.model.truncated": true
+      },
+      "durationMs": 0,
+      "events": [],
+      "kind": "INTERNAL",
+      "name": "invoke_agent short",
+      "parent": null,
+      "path": "invoke_agent short",
+      "scope": "flywheel",
+      "startMs": 0,
+      "status": {
+        "code": "UNSET"
+      },
+      "trace": "trace-2"
+    },
+    {
+      "attributes": {
+        "app.turn.answer": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "app.turn.answer.truncated": true,
+        "app.turn.message_count": 1,
+        "app.turn.messages": "[{\"role\":\"assistant\",\"content\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"}]",
+        "app.turn.ms": 0,
+        "app.turn.outcome": "answered",
+        "app.turn.tool_called": false,
+        "gen_ai.agent.name": "long",
+        "gen_ai.operation.name": "invoke_agent"
+      },
+      "durationMs": 0,
+      "events": [],
+      "kind": "INTERNAL",
+      "name": "invoke_agent long",
+      "parent": null,
+      "path": "invoke_agent long",
+      "scope": "flywheel",
+      "startMs": 0,
+      "status": {
+        "code": "UNSET"
+      },
+      "trace": "trace-3"
+    }
+  ]
+}

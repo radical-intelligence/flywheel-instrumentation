@@ -1,0 +1,324 @@
+{
+  "logRecords": [],
+  "results": [
+    {
+      "console": [],
+      "op": "init",
+      "step": "0"
+    },
+    {
+      "op": "handle",
+      "step": "1.0"
+    },
+    {
+      "op": "handle",
+      "step": "1.1"
+    },
+    {
+      "op": "handle",
+      "step": "1.2"
+    },
+    {
+      "op": "set",
+      "step": "1.3"
+    },
+    {
+      "op": "set",
+      "step": "1.4"
+    },
+    {
+      "op": "handle",
+      "step": "1.5"
+    },
+    {
+      "op": "getTraceId",
+      "step": "1.6",
+      "value": "trace-2"
+    },
+    {
+      "op": "span",
+      "step": "1"
+    },
+    {
+      "op": "set",
+      "step": "2.0.0"
+    },
+    {
+      "op": "span",
+      "step": "2.0"
+    },
+    {
+      "op": "set",
+      "step": "2.1"
+    },
+    {
+      "op": "span",
+      "step": "2"
+    },
+    {
+      "op": "handle",
+      "step": "3.0"
+    },
+    {
+      "op": "handle",
+      "step": "3.1"
+    },
+    {
+      "op": "span",
+      "step": "3"
+    },
+    {
+      "op": "handle",
+      "step": "4.0"
+    },
+    {
+      "op": "handle",
+      "step": "4.1"
+    },
+    {
+      "op": "span",
+      "step": "4"
+    },
+    {
+      "op": "user",
+      "step": "5.0"
+    },
+    {
+      "op": "session",
+      "step": "5.1"
+    },
+    {
+      "op": "span",
+      "step": "5"
+    },
+    {
+      "op": "user",
+      "step": "6.0"
+    },
+    {
+      "op": "session",
+      "step": "6.1"
+    },
+    {
+      "op": "user",
+      "step": "6.2"
+    },
+    {
+      "op": "span",
+      "step": "6"
+    },
+    {
+      "op": "handle",
+      "step": "7"
+    },
+    {
+      "op": "handle",
+      "step": "8"
+    },
+    {
+      "op": "set",
+      "step": "9"
+    },
+    {
+      "op": "user",
+      "step": "10"
+    },
+    {
+      "op": "session",
+      "step": "11"
+    },
+    {
+      "op": "getTraceId",
+      "step": "12",
+      "value": null
+    }
+  ],
+  "scenario": "09-schema-handles",
+  "spans": [
+    {
+      "attributes": {
+        "flywheel.attribute_count_limit": 1024,
+        "flywheel.schema.attribute_count": 24,
+        "flywheel.schema.node_count": 0,
+        "flywheel.self_check.issues": [],
+        "flywheel.self_check.ok": true,
+        "flywheel.version": "<version>"
+      },
+      "durationMs": 0,
+      "events": [],
+      "kind": "INTERNAL",
+      "name": "flywheel.startup",
+      "parent": null,
+      "path": "flywheel.startup",
+      "scope": "flywheel",
+      "startMs": 0,
+      "status": {
+        "code": "UNSET"
+      },
+      "trace": "trace-1"
+    },
+    {
+      "attributes": {
+        "app.agent.planner.step": "plan",
+        "app.model.analysis.ttft_ms": 120.5,
+        "app.request.route": "/feedback",
+        "app.tool.search.cached": true,
+        "app.tool.search.chapters": [
+          "a",
+          "b"
+        ],
+        "app.tool.search.count": 4,
+        "app.tool.search.status": "ok",
+        "custom.flag": true
+      },
+      "durationMs": 0,
+      "events": [],
+      "kind": "INTERNAL",
+      "name": "plain",
+      "parent": null,
+      "path": "plain",
+      "scope": "conformance",
+      "startMs": 0,
+      "status": {
+        "code": "UNSET"
+      },
+      "trace": "trace-2"
+    },
+    {
+      "attributes": {
+        "app.child": true
+      },
+      "durationMs": 0,
+      "events": [],
+      "kind": "INTERNAL",
+      "name": "child",
+      "parent": "span:parent",
+      "path": "parent > child",
+      "scope": "conformance",
+      "startMs": 0,
+      "status": {
+        "code": "UNSET"
+      },
+      "trace": "trace-3"
+    },
+    {
+      "attributes": {
+        "app.parent": true
+      },
+      "durationMs": 0,
+      "events": [],
+      "kind": "INTERNAL",
+      "name": "parent",
+      "parent": null,
+      "path": "parent",
+      "scope": "conformance",
+      "startMs": 0,
+      "status": {
+        "code": "UNSET"
+      },
+      "trace": "trace-3"
+    },
+    {
+      "attributes": {
+        "app.agent.planner.code": "abcdef",
+        "app.agent.planner.code.truncated": true,
+        "app.agent.planner.short": "abc",
+        "app.agent.planner.tags": [
+          "abc",
+          "ab"
+        ],
+        "app.agent.planner.tags.truncated": true,
+        "app.agent.planner.title": "abc",
+        "app.agent.planner.title.truncated": true,
+        "app.tool.search.cached": false,
+        "app.tool.search.chapters": [
+          "Tenancy",
+          "Fines"
+        ],
+        "app.tool.search.latency_ms": -12.5,
+        "app.tool.search.note": "abcd",
+        "app.tool.search.note.truncated": true,
+        "app.tool.search.query": "qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq",
+        "app.tool.search.query.truncated": true,
+        "app.tool.search.result_count": 0,
+        "app.tool.search.status": "ok"
+      },
+      "durationMs": 0,
+      "events": [],
+      "kind": "INTERNAL",
+      "name": "schema",
+      "parent": null,
+      "path": "schema",
+      "scope": "conformance",
+      "startMs": 0,
+      "status": {
+        "code": "UNSET"
+      },
+      "trace": "trace-4"
+    },
+    {
+      "attributes": {
+        "app.tool.search.cached": true,
+        "flywheel.attribute_error": [
+          "app.tool.search.status",
+          "app.tool.search.undeclared",
+          "app.tool.search.result_count",
+          "app.tool.search.latency_ms",
+          "app.tool.search.cached",
+          "app.tool.search.query",
+          "app.tool.search.chapters"
+        ]
+      },
+      "durationMs": 0,
+      "events": [],
+      "kind": "INTERNAL",
+      "name": "invalid",
+      "parent": null,
+      "path": "invalid",
+      "scope": "conformance",
+      "startMs": 0,
+      "status": {
+        "code": "UNSET"
+      },
+      "trace": "trace-5"
+    },
+    {
+      "attributes": {
+        "enduser.id": "user-7f3a",
+        "session.id": "session-1"
+      },
+      "durationMs": 0,
+      "events": [],
+      "kind": "INTERNAL",
+      "name": "ids",
+      "parent": null,
+      "path": "ids",
+      "scope": "conformance",
+      "startMs": 0,
+      "status": {
+        "code": "UNSET"
+      },
+      "trace": "trace-6"
+    },
+    {
+      "attributes": {
+        "flywheel.attribute_error": [
+          "enduser.id",
+          "session.id"
+        ]
+      },
+      "durationMs": 0,
+      "events": [],
+      "kind": "INTERNAL",
+      "name": "invalid-ids",
+      "parent": null,
+      "path": "invalid-ids",
+      "scope": "conformance",
+      "startMs": 0,
+      "status": {
+        "code": "UNSET"
+      },
+      "trace": "trace-7"
+    }
+  ]
+}

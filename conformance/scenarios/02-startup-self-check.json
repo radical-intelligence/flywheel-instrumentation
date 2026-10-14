@@ -1,0 +1,51 @@
+{
+  "$schema": "../scenario.schema.json",
+  "name": "02-startup-self-check",
+  "description": "The first init() with a tracer provider emits one flywheel.startup span. A later init() emits none. Each selfCheck() emits one. With a tracer and a logger provider, the check is ok.",
+  "covers": [
+    "setup: init() returns the live instance, and runs the self-check",
+    "practice 4: the first init() with a tracer provider emits one flywheel.startup span, at the root of a new trace, on the flywheel tracer, with the version and schema counts",
+    "practice 4: a later init() emits no startup span, and selfCheck() emits one on each call",
+    "practice 4: with a tracer and a logger provider, selfCheck() reports ok with no issues, and the limit comes from the SDK",
+    "practice 4: init() writes nothing to the console when the check has no issue",
+    "practice 1 and 4: the turn names are registered when the package loads, so selfCheck() counts them before any turn"
+  ],
+  "setup": {
+    "clock": "2026-10-01T00:00:00.000Z",
+    "tracerProvider": true,
+    "loggerProvider": true,
+    "attributeCountLimit": 1024,
+    "sampler": "always_on"
+  },
+  "steps": [
+    {
+      "op": "span",
+      "name": "request",
+      "kind": "SERVER",
+      "steps": [
+        {
+          "op": "init",
+          "options": {
+            "schemas": {
+              "tool": {
+                "search": {
+                  "attributes": {
+                    "status": { "type": "enum", "values": ["ok", "empty", "error"] },
+                    "query": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        },
+        { "op": "advanceClock", "ms": 10 }
+      ]
+    },
+    { "op": "selfCheck" },
+    { "op": "init", "options": { "requireLoggerProvider": true } },
+    { "op": "advanceClock", "ms": 5 },
+    { "op": "selfCheck" },
+    { "op": "init", "options": { "azureCustomEvents": true } },
+    { "op": "selfCheck" }
+  ]
+}

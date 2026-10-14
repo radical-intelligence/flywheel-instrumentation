@@ -1,0 +1,149 @@
+{
+  "logRecords": [],
+  "results": [
+    {
+      "op": "selfCheck",
+      "step": "0",
+      "value": {
+        "attributeCountLimit": {
+          "source": "default",
+          "value": 128
+        },
+        "attributeCounts": {
+          "nodes": {},
+          "turn": 0
+        },
+        "issues": [
+          {
+            "code": "not_initialised",
+            "level": "error",
+            "message": "init() has not run, so the noop instance writes nothing"
+          }
+        ],
+        "loggerProvider": null,
+        "ok": false,
+        "startupSpan": null,
+        "tracerProvider": false,
+        "valueSizeLimit": 8192
+      }
+    },
+    {
+      "op": "manifest",
+      "step": "1",
+      "value": {
+        "attributes": [],
+        "manifestVersion": 1,
+        "package": {
+          "name": "<package>",
+          "version": "<version>"
+        }
+      }
+    },
+    {
+      "op": "flush",
+      "step": "2",
+      "value": null
+    },
+    {
+      "op": "getTraceId",
+      "step": "3.0",
+      "value": null
+    },
+    {
+      "op": "turnRef",
+      "ref": null,
+      "step": "3.1"
+    },
+    {
+      "op": "set",
+      "step": "3.2"
+    },
+    {
+      "op": "handle",
+      "step": "3.3"
+    },
+    {
+      "op": "handle",
+      "step": "3.4"
+    },
+    {
+      "op": "user",
+      "step": "3.5"
+    },
+    {
+      "op": "session",
+      "step": "3.6"
+    },
+    {
+      "op": "turn",
+      "ref": null,
+      "returned": 42,
+      "step": "3.7"
+    },
+    {
+      "op": "feedback",
+      "step": "3.8"
+    },
+    {
+      "op": "metadata",
+      "step": "3.9"
+    },
+    {
+      "op": "advanceClock",
+      "step": "3.10.0.0"
+    },
+    {
+      "op": "timed",
+      "step": "3.10.0"
+    },
+    {
+      "op": "setTimelineAttributes",
+      "step": "3.10.1",
+      "value": {
+        "app.timeline.search.ms": 10,
+        "app.timeline.search.start_ms": 0
+      }
+    },
+    {
+      "op": "withTimeline",
+      "step": "3.10"
+    },
+    {
+      "op": "timelineJSON",
+      "step": "3.11",
+      "value": {
+        "marks": {},
+        "spans": [
+          {
+            "endMs": 10,
+            "name": "search",
+            "startMs": 0
+          }
+        ],
+        "usage": {}
+      }
+    },
+    {
+      "op": "span",
+      "step": "3"
+    }
+  ],
+  "scenario": "01-noop-before-init",
+  "spans": [
+    {
+      "attributes": {},
+      "durationMs": 10,
+      "events": [],
+      "kind": "SERVER",
+      "name": "request",
+      "parent": null,
+      "path": "request",
+      "scope": "conformance",
+      "startMs": 0,
+      "status": {
+        "code": "UNSET"
+      },
+      "trace": "trace-1"
+    }
+  ]
+}

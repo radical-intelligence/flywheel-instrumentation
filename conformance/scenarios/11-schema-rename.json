@@ -1,0 +1,90 @@
+{
+  "$schema": "../scenario.schema.json",
+  "name": "11-schema-rename",
+  "description": "A rename writes the value under the old name too, until 00:00 UTC on its expiry date. The rename clock is the scenario wall clock.",
+  "covers": [
+    "practice 3: a rename writes the old and new names before its expiry date, and only the new name from 00:00 UTC on that date",
+    "practice 3: a rename sets <key>.truncated on both names when it cuts the value",
+    "practice 5: the manifest lists the old name of a rename with aliasOf and until"
+  ],
+  "setup": {
+    "clock": "2026-10-01T23:59:59.000Z",
+    "tracerProvider": true,
+    "loggerProvider": true,
+    "attributeCountLimit": 1024,
+    "sampler": "always_on"
+  },
+  "steps": [
+    {
+      "op": "init",
+      "options": {
+        "schemas": {
+          "agent": {
+            "planner": {
+              "attributes": {
+                "time_to_first_token_ms": { "type": "number", "renamedFrom": { "from": "ttft_ms", "until": "2026-10-02" } },
+                "goal": { "type": "string", "maxLength": 2, "renamedFrom": { "from": "objective", "until": "2026-10-02" } }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "op": "span",
+      "name": "before",
+      "steps": [
+        {
+          "op": "handle",
+          "type": "agent",
+          "name": "planner",
+          "schema": {
+            "attributes": {
+              "time_to_first_token_ms": { "type": "number", "renamedFrom": { "from": "ttft_ms", "until": "2026-10-02" } },
+              "goal": { "type": "string", "maxLength": 2, "renamedFrom": { "from": "objective", "until": "2026-10-02" } }
+            }
+          },
+          "attributes": { "time_to_first_token_ms": 10, "goal": "abc" }
+        }
+      ]
+    },
+    { "op": "advanceClock", "ms": 999 },
+    {
+      "op": "span",
+      "name": "last-millisecond",
+      "steps": [
+        {
+          "op": "handle",
+          "type": "agent",
+          "name": "planner",
+          "schema": {
+            "attributes": {
+              "time_to_first_token_ms": { "type": "number", "renamedFrom": { "from": "ttft_ms", "until": "2026-10-02" } }
+            }
+          },
+          "attributes": { "time_to_first_token_ms": 15 }
+        }
+      ]
+    },
+    { "op": "advanceClock", "ms": 1 },
+    {
+      "op": "span",
+      "name": "on",
+      "steps": [
+        {
+          "op": "handle",
+          "type": "agent",
+          "name": "planner",
+          "schema": {
+            "attributes": {
+              "time_to_first_token_ms": { "type": "number", "renamedFrom": { "from": "ttft_ms", "until": "2026-10-02" } },
+              "goal": { "type": "string", "maxLength": 2, "renamedFrom": { "from": "objective", "until": "2026-10-02" } }
+            }
+          },
+          "attributes": { "time_to_first_token_ms": 20, "goal": "abc" }
+        }
+      ]
+    },
+    { "op": "manifest" }
+  ]
+}

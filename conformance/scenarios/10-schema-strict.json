@@ -1,0 +1,54 @@
+{
+  "$schema": "../scenario.schema.json",
+  "name": "10-schema-strict",
+  "description": "In strict mode, an invalid write throws a TypeError and writes nothing for that key.",
+  "covers": [
+    "practice 3: in strict mode, an invalid write throws a TypeError and writes nothing for that key",
+    "practice 3: in strict mode, the keys before the invalid key in one write are written, and the keys after it are not",
+    "practice 3: in strict mode, user() with an empty id throws"
+  ],
+  "setup": {
+    "clock": "2026-10-01T00:00:00.000Z",
+    "tracerProvider": true,
+    "loggerProvider": true,
+    "attributeCountLimit": 1024,
+    "sampler": "always_on"
+  },
+  "steps": [
+    { "op": "init", "options": { "strict": true } },
+    {
+      "op": "span",
+      "name": "request",
+      "steps": [
+        {
+          "op": "handle",
+          "type": "tool",
+          "name": "search",
+          "schema": {
+            "attributes": {
+              "status": { "type": "enum", "values": ["ok", "empty", "error"] },
+              "result_count": { "type": "count" },
+              "cached": { "type": "boolean" }
+            }
+          },
+          "attributes": { "cached": true, "status": "timeout", "result_count": 3 }
+        },
+        {
+          "op": "handle",
+          "type": "tool",
+          "name": "search",
+          "schema": { "attributes": { "status": { "type": "enum", "values": ["ok"] } } },
+          "attributes": { "raw_query": "x" }
+        },
+        { "op": "user", "id": "" },
+        {
+          "op": "handle",
+          "type": "tool",
+          "name": "search",
+          "schema": { "attributes": { "query": { "type": "string", "maxLength": 3 } } },
+          "attributes": { "query": "abcdef" }
+        }
+      ]
+    }
+  ]
+}

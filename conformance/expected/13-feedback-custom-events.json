@@ -1,0 +1,234 @@
+{
+  "logRecords": [
+    {
+      "attributes": {
+        "event.name": "user_feedback",
+        "feedback.class": "explicit",
+        "feedback.comment": "wrong",
+        "feedback.kind": "rating",
+        "feedback.rating": "down",
+        "feedback.session": "s1",
+        "microsoft.custom_event.name": "user_feedback"
+      },
+      "body": null,
+      "scope": "flywheel",
+      "severityNumber": 9,
+      "severityText": null,
+      "span": "span:invoke_agent example-agent > user_feedback",
+      "timeMs": 150,
+      "trace": "trace-2"
+    },
+    {
+      "attributes": {
+        "event.name": "feedback.dwell",
+        "feedback.class": "ui",
+        "feedback.dwell_ms": 1500,
+        "feedback.element": "sources",
+        "feedback.kind": "dwell",
+        "feedback.session": "s2",
+        "microsoft.custom_event.name": "feedback.dwell"
+      },
+      "body": null,
+      "scope": "flywheel",
+      "severityNumber": 9,
+      "severityText": null,
+      "span": "span:feedback.dwell",
+      "timeMs": 2000,
+      "trace": "session-trace:s2"
+    },
+    {
+      "attributes": {
+        "microsoft.custom_event.name": "user_feedback",
+        "rating": "up",
+        "score": 1
+      },
+      "body": null,
+      "scope": "flywheel",
+      "severityNumber": 9,
+      "severityText": null,
+      "span": "prefix:trace-2",
+      "timeMs": 150,
+      "trace": "trace-2"
+    },
+    {
+      "attributes": {
+        "microsoft.custom_event.name": "renamed",
+        "rating": "up"
+      },
+      "body": null,
+      "scope": "flywheel",
+      "severityNumber": 9,
+      "severityText": null,
+      "span": "prefix:trace-4",
+      "timeMs": 150,
+      "trace": "trace-4"
+    },
+    {
+      "attributes": {
+        "microsoft.custom_event.name": "user_feedback",
+        "rating": "up"
+      },
+      "body": null,
+      "scope": "flywheel",
+      "severityNumber": 9,
+      "severityText": null,
+      "span": null,
+      "timeMs": 150,
+      "trace": null
+    }
+  ],
+  "results": [
+    {
+      "console": [],
+      "op": "init",
+      "step": "0"
+    },
+    {
+      "op": "advanceClock",
+      "step": "1.0"
+    },
+    {
+      "op": "turn",
+      "ref": {
+        "spanId": "span:invoke_agent example-agent",
+        "traceId": "trace-2"
+      },
+      "returned": null,
+      "step": "1"
+    },
+    {
+      "op": "advanceClock",
+      "step": "2"
+    },
+    {
+      "op": "feedback",
+      "step": "3"
+    },
+    {
+      "op": "feedback",
+      "step": "4"
+    },
+    {
+      "op": "metadata",
+      "step": "5.0"
+    },
+    {
+      "op": "metadata",
+      "step": "5.1"
+    },
+    {
+      "op": "span",
+      "step": "5"
+    },
+    {
+      "op": "metadata",
+      "step": "6"
+    }
+  ],
+  "scenario": "13-feedback-custom-events",
+  "spans": [
+    {
+      "attributes": {
+        "flywheel.attribute_count_limit": 1024,
+        "flywheel.schema.attribute_count": 24,
+        "flywheel.schema.node_count": 0,
+        "flywheel.self_check.issues": [],
+        "flywheel.self_check.ok": true,
+        "flywheel.version": "<version>"
+      },
+      "durationMs": 0,
+      "events": [],
+      "kind": "INTERNAL",
+      "name": "flywheel.startup",
+      "parent": null,
+      "path": "flywheel.startup",
+      "scope": "flywheel",
+      "startMs": 0,
+      "status": {
+        "code": "UNSET"
+      },
+      "trace": "trace-1"
+    },
+    {
+      "attributes": {
+        "app.turn.message_count": 0,
+        "app.turn.ms": 100,
+        "app.turn.outcome": "answered",
+        "app.turn.tool_called": false,
+        "gen_ai.agent.name": "example-agent",
+        "gen_ai.operation.name": "invoke_agent"
+      },
+      "durationMs": 100,
+      "events": [],
+      "kind": "INTERNAL",
+      "name": "invoke_agent example-agent",
+      "parent": null,
+      "path": "invoke_agent example-agent",
+      "scope": "flywheel",
+      "startMs": 0,
+      "status": {
+        "code": "UNSET"
+      },
+      "trace": "trace-2"
+    },
+    {
+      "attributes": {
+        "event.name": "user_feedback",
+        "feedback.class": "explicit",
+        "feedback.comment": "wrong",
+        "feedback.kind": "rating",
+        "feedback.rating": "down",
+        "feedback.session": "s1"
+      },
+      "durationMs": 0,
+      "events": [],
+      "kind": "INTERNAL",
+      "name": "user_feedback",
+      "parent": "span:invoke_agent example-agent",
+      "path": "invoke_agent example-agent > user_feedback",
+      "scope": "flywheel",
+      "startMs": 150,
+      "status": {
+        "code": "UNSET"
+      },
+      "trace": "trace-2"
+    },
+    {
+      "attributes": {
+        "event.name": "feedback.dwell",
+        "feedback.class": "ui",
+        "feedback.dwell_ms": 1500,
+        "feedback.element": "sources",
+        "feedback.kind": "dwell",
+        "feedback.session": "s2"
+      },
+      "durationMs": 0,
+      "events": [],
+      "kind": "INTERNAL",
+      "name": "feedback.dwell",
+      "parent": "session-span:s2",
+      "path": "feedback.dwell",
+      "scope": "flywheel",
+      "startMs": 2000,
+      "status": {
+        "code": "UNSET"
+      },
+      "trace": "session-trace:s2"
+    },
+    {
+      "attributes": {},
+      "durationMs": 0,
+      "events": [],
+      "kind": "INTERNAL",
+      "name": "request",
+      "parent": null,
+      "path": "request",
+      "scope": "conformance",
+      "startMs": 150,
+      "status": {
+        "code": "UNSET"
+      },
+      "trace": "trace-3"
+    }
+  ]
+}

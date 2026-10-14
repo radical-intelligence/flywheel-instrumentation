@@ -1,0 +1,408 @@
+{
+  "logRecords": [],
+  "results": [
+    {
+      "console": [],
+      "op": "init",
+      "step": "0"
+    },
+    {
+      "op": "advanceClock",
+      "step": "1.0.0"
+    },
+    {
+      "op": "timelineSpan",
+      "step": "1.0.1"
+    },
+    {
+      "op": "advanceClock",
+      "step": "1.0.2"
+    },
+    {
+      "op": "timelineSpan",
+      "step": "1.0.3"
+    },
+    {
+      "op": "timelineClose",
+      "step": "1.0.4"
+    },
+    {
+      "op": "advanceClock",
+      "step": "1.0.5"
+    },
+    {
+      "op": "timelineClose",
+      "step": "1.0.6"
+    },
+    {
+      "op": "timelineSpan",
+      "step": "1.0.7"
+    },
+    {
+      "op": "advanceClock",
+      "step": "1.0.8"
+    },
+    {
+      "op": "timelineClose",
+      "step": "1.0.9"
+    },
+    {
+      "op": "timelineClose",
+      "step": "1.0.10"
+    },
+    {
+      "op": "timelineSpan",
+      "step": "1.0.11"
+    },
+    {
+      "op": "mark",
+      "step": "1.0.12"
+    },
+    {
+      "op": "markLast",
+      "step": "1.0.13"
+    },
+    {
+      "op": "advanceClock",
+      "step": "1.0.14"
+    },
+    {
+      "op": "mark",
+      "step": "1.0.15"
+    },
+    {
+      "op": "markLast",
+      "step": "1.0.16"
+    },
+    {
+      "op": "timelineSet",
+      "step": "1.0.17"
+    },
+    {
+      "op": "timelineSet",
+      "step": "1.0.18"
+    },
+    {
+      "op": "timelineSet",
+      "step": "1.0.19"
+    },
+    {
+      "op": "timelineSet",
+      "step": "1.0.20"
+    },
+    {
+      "op": "advanceClock",
+      "step": "1.0.21.0"
+    },
+    {
+      "op": "advanceClock",
+      "step": "1.0.21.1.0"
+    },
+    {
+      "op": "annotate",
+      "step": "1.0.21.1.1"
+    },
+    {
+      "op": "timed",
+      "step": "1.0.21.1"
+    },
+    {
+      "op": "timelineSpan",
+      "step": "1.0.21.2.0"
+    },
+    {
+      "op": "advanceClock",
+      "step": "1.0.21.2.1"
+    },
+    {
+      "op": "timelineClose",
+      "step": "1.0.21.2.2"
+    },
+    {
+      "op": "annotate",
+      "step": "1.0.21.2.3"
+    },
+    {
+      "op": "scope",
+      "step": "1.0.21.2"
+    },
+    {
+      "op": "annotate",
+      "step": "1.0.21.3"
+    },
+    {
+      "op": "timed",
+      "step": "1.0.21"
+    },
+    {
+      "op": "mark",
+      "step": "1.0.22.0"
+    },
+    {
+      "op": "advanceClock",
+      "step": "1.0.22.1"
+    },
+    {
+      "op": "markLast",
+      "step": "1.0.22.2"
+    },
+    {
+      "error": {
+        "message": "model failed",
+        "name": "Error"
+      },
+      "op": "timed",
+      "step": "1.0.22"
+    },
+    {
+      "op": "recordUsage",
+      "step": "1.0.23"
+    },
+    {
+      "op": "advanceClock",
+      "step": "1.0.24"
+    },
+    {
+      "op": "endRequest",
+      "step": "1.0.25"
+    },
+    {
+      "op": "advanceClock",
+      "step": "1.0.26"
+    },
+    {
+      "op": "endRequest",
+      "step": "1.0.27"
+    },
+    {
+      "op": "setTimelineAttributes",
+      "step": "1.0.28",
+      "value": {
+        "app.timeline.a#2.ms": 0.1,
+        "app.timeline.a#2.start_ms": 17.3,
+        "app.timeline.a.attr.done": true,
+        "app.timeline.a.ms": 2.3,
+        "app.timeline.a.start_ms": 15,
+        "app.timeline.b.attr.n": 1,
+        "app.timeline.b.ms": 10,
+        "app.timeline.b.start_ms": 5,
+        "app.timeline.generate.ms": 400,
+        "app.timeline.generate.start_ms": 178.4,
+        "app.timeline.mark.chat.firstText": 178.4,
+        "app.timeline.mark.chat.lastToken": 578.4,
+        "app.timeline.mark.l": 18.4,
+        "app.timeline.mark.m": 17.4,
+        "app.timeline.request.ms": 581.4,
+        "app.timeline.request.start_ms": 0,
+        "app.timeline.search.attr.leg": 0,
+        "app.timeline.search.attr.semanticRanker": true,
+        "app.timeline.search.leg.attr.hits": 3,
+        "app.timeline.search.leg.ms": 50,
+        "app.timeline.search.leg.start_ms": 118.4,
+        "app.timeline.search.ms": 160,
+        "app.timeline.search.rerank.call.ms": 10,
+        "app.timeline.search.rerank.call.start_ms": 168.4,
+        "app.timeline.search.start_ms": 18.4,
+        "app.timeline.usage.cachedInputTokens": 100,
+        "app.timeline.usage.inputTokens": 900,
+        "app.timeline.usage.outputTokens": 120,
+        "app.timeline.usage.outputTokensPerSecond": 250,
+        "app.timeline.usage.reasoningTokens": 20,
+        "app.timeline.usage.x": 4
+      }
+    },
+    {
+      "op": "withTimeline",
+      "step": "1.0"
+    },
+    {
+      "op": "mark",
+      "step": "1.1"
+    },
+    {
+      "op": "timelineSet",
+      "step": "1.2"
+    },
+    {
+      "op": "advanceClock",
+      "step": "1.3.0"
+    },
+    {
+      "op": "timed",
+      "step": "1.3"
+    },
+    {
+      "op": "timelineJSON",
+      "step": "1.4",
+      "value": {
+        "marks": {
+          "chat.firstText": 178.4,
+          "chat.lastToken": 578.4,
+          "l": 18.4,
+          "m": 17.4
+        },
+        "spans": [
+          {
+            "endMs": 581.4,
+            "name": "request",
+            "startMs": 0
+          },
+          {
+            "attrs": {
+              "n": 1
+            },
+            "endMs": 15,
+            "name": "b",
+            "startMs": 5
+          },
+          {
+            "attrs": {
+              "done": true
+            },
+            "endMs": 17.3,
+            "name": "a",
+            "startMs": 15
+          },
+          {
+            "endMs": 17.4,
+            "name": "a#2",
+            "startMs": 17.3
+          },
+          {
+            "attrs": {
+              "leg": 0,
+              "semanticRanker": true
+            },
+            "endMs": 178.4,
+            "name": "search",
+            "startMs": 18.4
+          },
+          {
+            "attrs": {
+              "hits": 3
+            },
+            "endMs": 168.4,
+            "name": "search.leg",
+            "startMs": 118.4
+          },
+          {
+            "endMs": 178.4,
+            "name": "search.rerank.call",
+            "startMs": 168.4
+          },
+          {
+            "endMs": 578.4,
+            "name": "generate",
+            "startMs": 178.4
+          }
+        ],
+        "usage": {
+          "cachedInputTokens": 100,
+          "inputTokens": 900,
+          "outputTokens": 120,
+          "outputTokensPerSecond": 250,
+          "reasoningTokens": 20,
+          "x": 4
+        }
+      }
+    },
+    {
+      "op": "span",
+      "step": "1"
+    },
+    {
+      "op": "recordUsage",
+      "step": "2.0"
+    },
+    {
+      "op": "timelineJSON",
+      "step": "2.1",
+      "value": {
+        "marks": {},
+        "spans": [],
+        "usage": {
+          "cachedInputTokens": 4,
+          "inputTokens": 10,
+          "outputTokens": 5,
+          "reasoningTokens": 2
+        }
+      }
+    },
+    {
+      "op": "withTimeline",
+      "step": "2"
+    }
+  ],
+  "scenario": "15-timeline",
+  "spans": [
+    {
+      "attributes": {
+        "flywheel.attribute_count_limit": 1024,
+        "flywheel.schema.attribute_count": 24,
+        "flywheel.schema.node_count": 0,
+        "flywheel.self_check.issues": [],
+        "flywheel.self_check.ok": true,
+        "flywheel.version": "<version>"
+      },
+      "durationMs": 0,
+      "events": [],
+      "kind": "INTERNAL",
+      "name": "flywheel.startup",
+      "parent": null,
+      "path": "flywheel.startup",
+      "scope": "flywheel",
+      "startMs": 0,
+      "status": {
+        "code": "UNSET"
+      },
+      "trace": "trace-1"
+    },
+    {
+      "attributes": {
+        "app.timeline.a#2.ms": 0.1,
+        "app.timeline.a#2.start_ms": 17.3,
+        "app.timeline.a.attr.done": true,
+        "app.timeline.a.ms": 2.3,
+        "app.timeline.a.start_ms": 15,
+        "app.timeline.b.attr.n": 1,
+        "app.timeline.b.ms": 10,
+        "app.timeline.b.start_ms": 5,
+        "app.timeline.generate.ms": 400,
+        "app.timeline.generate.start_ms": 178.4,
+        "app.timeline.mark.chat.firstText": 178.4,
+        "app.timeline.mark.chat.lastToken": 578.4,
+        "app.timeline.mark.l": 18.4,
+        "app.timeline.mark.m": 17.4,
+        "app.timeline.request.ms": 581.4,
+        "app.timeline.request.start_ms": 0,
+        "app.timeline.search.attr.leg": 0,
+        "app.timeline.search.attr.semanticRanker": true,
+        "app.timeline.search.leg.attr.hits": 3,
+        "app.timeline.search.leg.ms": 50,
+        "app.timeline.search.leg.start_ms": 118.4,
+        "app.timeline.search.ms": 160,
+        "app.timeline.search.rerank.call.ms": 10,
+        "app.timeline.search.rerank.call.start_ms": 168.4,
+        "app.timeline.search.start_ms": 18.4,
+        "app.timeline.usage.cachedInputTokens": 100,
+        "app.timeline.usage.inputTokens": 900,
+        "app.timeline.usage.outputTokens": 120,
+        "app.timeline.usage.outputTokensPerSecond": 250,
+        "app.timeline.usage.reasoningTokens": 20,
+        "app.timeline.usage.x": 4
+      },
+      "durationMs": 589.4,
+      "events": [],
+      "kind": "SERVER",
+      "name": "request",
+      "parent": null,
+      "path": "request",
+      "scope": "conformance",
+      "startMs": 0,
+      "status": {
+        "code": "UNSET"
+      },
+      "trace": "trace-2"
+    }
+  ]
+}

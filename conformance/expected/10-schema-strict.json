@@ -1,0 +1,91 @@
+{
+  "logRecords": [],
+  "results": [
+    {
+      "console": [],
+      "op": "init",
+      "step": "0"
+    },
+    {
+      "error": {
+        "message": "flywheel: dropped app.tool.search.status: expected one of ok, empty, error",
+        "name": "TypeError"
+      },
+      "op": "handle",
+      "step": "1.0"
+    },
+    {
+      "error": {
+        "message": "flywheel: dropped app.tool.search.raw_query: key not declared in the schema",
+        "name": "TypeError"
+      },
+      "op": "handle",
+      "step": "1.1"
+    },
+    {
+      "error": {
+        "message": "flywheel: dropped enduser.id: expected a non-empty string",
+        "name": "TypeError"
+      },
+      "op": "user",
+      "step": "1.2"
+    },
+    {
+      "op": "handle",
+      "step": "1.3"
+    },
+    {
+      "op": "span",
+      "step": "1"
+    }
+  ],
+  "scenario": "10-schema-strict",
+  "spans": [
+    {
+      "attributes": {
+        "flywheel.attribute_count_limit": 1024,
+        "flywheel.schema.attribute_count": 24,
+        "flywheel.schema.node_count": 0,
+        "flywheel.self_check.issues": [],
+        "flywheel.self_check.ok": true,
+        "flywheel.version": "<version>"
+      },
+      "durationMs": 0,
+      "events": [],
+      "kind": "INTERNAL",
+      "name": "flywheel.startup",
+      "parent": null,
+      "path": "flywheel.startup",
+      "scope": "flywheel",
+      "startMs": 0,
+      "status": {
+        "code": "UNSET"
+      },
+      "trace": "trace-1"
+    },
+    {
+      "attributes": {
+        "app.tool.search.cached": true,
+        "app.tool.search.query": "abc",
+        "app.tool.search.query.truncated": true,
+        "flywheel.attribute_error": [
+          "app.tool.search.status",
+          "app.tool.search.raw_query",
+          "enduser.id"
+        ]
+      },
+      "durationMs": 0,
+      "events": [],
+      "kind": "INTERNAL",
+      "name": "request",
+      "parent": null,
+      "path": "request",
+      "scope": "conformance",
+      "startMs": 0,
+      "status": {
+        "code": "UNSET"
+      },
+      "trace": "trace-2"
+    }
+  ]
+}

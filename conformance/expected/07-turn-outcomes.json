@@ -1,0 +1,253 @@
+{
+  "logRecords": [],
+  "results": [
+    {
+      "console": [],
+      "op": "init",
+      "step": "0"
+    },
+    {
+      "op": "turn",
+      "ref": {
+        "spanId": "span:invoke_agent refuser",
+        "traceId": "trace-2"
+      },
+      "returned": null,
+      "step": "1"
+    },
+    {
+      "op": "advanceClock",
+      "step": "2.0"
+    },
+    {
+      "error": {
+        "message": "model timed out",
+        "name": "Error"
+      },
+      "op": "turn",
+      "ref": {
+        "spanId": "span:invoke_agent failing",
+        "traceId": "trace-3"
+      },
+      "step": "2"
+    },
+    {
+      "error": {
+        "message": "client closed",
+        "name": "AbortError"
+      },
+      "op": "turn",
+      "ref": {
+        "spanId": "span:invoke_agent aborting",
+        "traceId": "trace-4"
+      },
+      "step": "3"
+    },
+    {
+      "op": "turn",
+      "ref": {
+        "spanId": "span:invoke_agent invalid",
+        "traceId": "trace-5"
+      },
+      "returned": null,
+      "step": "4"
+    },
+    {
+      "op": "advanceClock",
+      "step": "5.0.0.0"
+    },
+    {
+      "op": "timed",
+      "step": "5.0.0"
+    },
+    {
+      "op": "timelineSet",
+      "step": "5.0.1"
+    },
+    {
+      "op": "timelineSet",
+      "step": "5.0.2"
+    },
+    {
+      "op": "turn",
+      "ref": {
+        "spanId": "span:invoke_agent explicit",
+        "traceId": "trace-6"
+      },
+      "returned": null,
+      "step": "5.0"
+    },
+    {
+      "op": "withTimeline",
+      "step": "5"
+    }
+  ],
+  "scenario": "07-turn-outcomes",
+  "spans": [
+    {
+      "attributes": {
+        "flywheel.attribute_count_limit": 1024,
+        "flywheel.schema.attribute_count": 24,
+        "flywheel.schema.node_count": 0,
+        "flywheel.self_check.issues": [],
+        "flywheel.self_check.ok": true,
+        "flywheel.version": "<version>"
+      },
+      "durationMs": 0,
+      "events": [],
+      "kind": "INTERNAL",
+      "name": "flywheel.startup",
+      "parent": null,
+      "path": "flywheel.startup",
+      "scope": "flywheel",
+      "startMs": 0,
+      "status": {
+        "code": "UNSET"
+      },
+      "trace": "trace-1"
+    },
+    {
+      "attributes": {
+        "app.turn.answer": "That is out of scope.",
+        "app.turn.message_count": 0,
+        "app.turn.ms": 0,
+        "app.turn.outcome": "refused",
+        "app.turn.tool_called": false,
+        "gen_ai.agent.name": "refuser",
+        "gen_ai.operation.name": "invoke_agent"
+      },
+      "durationMs": 0,
+      "events": [],
+      "kind": "INTERNAL",
+      "name": "invoke_agent refuser",
+      "parent": null,
+      "path": "invoke_agent refuser",
+      "scope": "flywheel",
+      "startMs": 0,
+      "status": {
+        "code": "UNSET"
+      },
+      "trace": "trace-2"
+    },
+    {
+      "attributes": {
+        "app.turn.message_count": 0,
+        "app.turn.ms": 250,
+        "app.turn.outcome": "error",
+        "app.turn.query": "q",
+        "app.turn.tool_called": false,
+        "gen_ai.agent.name": "failing",
+        "gen_ai.operation.name": "invoke_agent",
+        "gen_ai.request.model": "gpt-4.1"
+      },
+      "durationMs": 250,
+      "events": [
+        {
+          "attributes": {
+            "exception.message": "model timed out",
+            "exception.stacktrace": "<stacktrace>",
+            "exception.type": "Error"
+          },
+          "name": "exception",
+          "timeMs": 250
+        }
+      ],
+      "kind": "INTERNAL",
+      "name": "invoke_agent failing",
+      "parent": null,
+      "path": "invoke_agent failing",
+      "scope": "flywheel",
+      "startMs": 0,
+      "status": {
+        "code": "ERROR",
+        "message": "model timed out"
+      },
+      "trace": "trace-3"
+    },
+    {
+      "attributes": {
+        "app.turn.message_count": 0,
+        "app.turn.ms": 0,
+        "app.turn.outcome": "aborted",
+        "app.turn.tool_called": false,
+        "gen_ai.agent.name": "aborting",
+        "gen_ai.operation.name": "invoke_agent"
+      },
+      "durationMs": 0,
+      "events": [
+        {
+          "attributes": {
+            "exception.message": "client closed",
+            "exception.stacktrace": "<stacktrace>",
+            "exception.type": "AbortError"
+          },
+          "name": "exception",
+          "timeMs": 250
+        }
+      ],
+      "kind": "INTERNAL",
+      "name": "invoke_agent aborting",
+      "parent": null,
+      "path": "invoke_agent aborting",
+      "scope": "flywheel",
+      "startMs": 250,
+      "status": {
+        "code": "ERROR",
+        "message": "client closed"
+      },
+      "trace": "trace-4"
+    },
+    {
+      "attributes": {
+        "app.turn.message_count": 0,
+        "app.turn.timing.generate": 900,
+        "app.turn.tool_called": false,
+        "flywheel.attribute_error": [
+          "app.turn.outcome",
+          "app.turn.ms",
+          "app.turn.timing.search",
+          "gen_ai.usage.input_tokens",
+          "gen_ai.usage.output_tokens"
+        ],
+        "gen_ai.agent.name": "invalid",
+        "gen_ai.operation.name": "invoke_agent"
+      },
+      "durationMs": 0,
+      "events": [],
+      "kind": "INTERNAL",
+      "name": "invoke_agent invalid",
+      "parent": null,
+      "path": "invoke_agent invalid",
+      "scope": "flywheel",
+      "startMs": 250,
+      "status": {
+        "code": "UNSET"
+      },
+      "trace": "trace-5"
+    },
+    {
+      "attributes": {
+        "app.turn.message_count": 0,
+        "app.turn.ms": 1100,
+        "app.turn.outcome": "answered",
+        "app.turn.timing.retrieve": 12.5,
+        "app.turn.tool_called": true,
+        "gen_ai.agent.name": "explicit",
+        "gen_ai.operation.name": "invoke_agent",
+        "gen_ai.usage.input_tokens": 10
+      },
+      "durationMs": 40,
+      "events": [],
+      "kind": "INTERNAL",
+      "name": "invoke_agent explicit",
+      "parent": null,
+      "path": "invoke_agent explicit",
+      "scope": "flywheel",
+      "startMs": 250,
+      "status": {
+        "code": "UNSET"
+      },
+      "trace": "trace-6"
+    }
+  ]
+}
