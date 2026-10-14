@@ -823,6 +823,10 @@ export const contractCases: ContractCase[] = [
     name: 'sequential step offsets add up to the request wall-clock time on the real clock',
     run: async () => {
       const fw = init()
+      // Earlier cases run the timeline on a fake clock. Run it once on the
+      // real clock first, so V8 does not recompile it inside the measured
+      // request and move the request start past 0.05 ms.
+      fw.createTimeline().startRequest()
       const before = performance.now()
       const rt = fw.createTimeline()
       rt.startRequest()

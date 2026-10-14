@@ -4,13 +4,11 @@
  * the OpenTelemetry API only.
  *
  * The example writes spans and log records to the console. The test passes
- * in-memory exporters in their place. For a real backend, change the
- * exporters here (see "Backends" in AGENTS.md):
+ * in-memory exporters in their place. A real backend changes this
+ * registration only:
  *
- * - Azure Monitor: call `useAzureMonitor()` from `@azure/monitor-opentelemetry`
- *   in place of this function. It registers both providers.
- * - Langfuse: add `LangfuseSpanProcessor` from `@langfuse/otel` to
- *   `spanProcessors`. Langfuse does not ingest log records.
+ * - Azure Monitor: `examples/azure-appi/telemetry.ts`.
+ * - Langfuse: `examples/langfuse/telemetry.ts`.
  */
 import { context, trace } from '@opentelemetry/api'
 import { logs } from '@opentelemetry/api-logs'
@@ -51,4 +49,15 @@ export function registerTelemetry(
       await loggerProvider.shutdown()
     },
   }
+}
+
+/**
+ * Returns the value of each variable, in order. Throws one error that names
+ * every missing variable, so a backend example stops before it registers
+ * anything.
+ */
+export function requireEnv(backend: string, names: readonly string[]): string[] {
+  const missing = names.filter(name => !process.env[name])
+  if (missing.length > 0) throw new Error(`${backend} needs ${missing.join(', ')} in the environment`)
+  return names.map(name => process.env[name] as string)
 }

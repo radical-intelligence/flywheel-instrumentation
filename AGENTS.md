@@ -6,6 +6,8 @@ This file is for an AI agent that adds this package to a product, or changes the
 
 `@radical-intelligence/flywheel-instrumentation` writes a product's telemetry onto OpenTelemetry spans and log records. The Flywheel reads that telemetry to evaluate each turn and to propose changes. The package uses only `@opentelemetry/api` and `@opentelemetry/api-logs`. The product registers the SDK and the exporter, so the package does not depend on one telemetry backend.
 
+The seven practices below are the target on every backend. FLS sends its telemetry to Application Insights today. A product on Langfuse, Arize or another OpenTelemetry backend implements the same practices, with the same attribute names, through this package. Only the telemetry registration changes. See "Backends" below.
+
 Install it as a git dependency, at a tag:
 
 ```bash
@@ -25,7 +27,15 @@ The public API is in `src/index.ts`, and the types are in `src/types.ts`. The su
 
 ## Example
 
-`examples/agent/` is a runnable product that uses the package, with practices 1 to 6 in code. Copy its pattern: `telemetry.ts` registers the providers, `main.ts` calls `init({ schemas })` and the self-check, `schemas.ts` is the schema module, and `app.ts` has the turn, the timeline, the node handles and the feedback route. `test/example.test.ts` checks the spans it exports. The README has the commands.
+`examples/agent/` is a runnable product that uses the package, with practices 1 to 6 in code. Copy its pattern: `telemetry.ts` registers the providers, `main.ts` calls `init({ schemas })` and the self-check, `schemas.ts` is the schema module, and `app.ts` has the turn, the timeline, the node handles and the feedback route. `test/example.test.ts` checks the spans it exports. The README has the commands. `examples/agent/AGENTS.md` maps each practice to the example code and says how to extend it.
+
+The same agent runs on two backends. Each backend folder holds only a `telemetry.ts`, a `main.ts` and an `AGENTS.md` that maps the practices to that backend:
+
+| Folder | Backend | Command |
+|---|---|---|
+| `examples/agent/` | Console exporters, and in-memory exporters in the test | `npm run example` |
+| `examples/azure-appi/` | Azure Monitor (Application Insights) | `npm run example:azure` |
+| `examples/langfuse/` | Langfuse | `npm run example:langfuse` |
 
 ## Practices
 
@@ -192,11 +202,11 @@ Azure Monitor (KQL, Application Insights). Each query ran against the FLS dev re
 - Feedback join: `let feedback = customEvents | where timestamp > ago(1d) | where name in ('user_feedback', 'tester_feedback') | project operation_Id, fb = itemId; let turns = requests | where timestamp > ago(2d) | summarize by operation_Id, turn = true; feedback | join kind=leftouter turns on operation_Id | summarize feedback = dcount(fb), rows = count(), joined = countif(turn == true)`. It passes when the three counts are equal. With `feedback()` spans and no `azureCustomEvents`, read the feedback from `dependencies` by name.
 - Attribute limit: `requests | where timestamp > ago(1d) | extend keys = array_length(bag_keys(customDimensions)) | summarize maxKeys = max(keys), atLimit = countif(keys >= 1024)`. Replace 1024 with the configured limit. It passes when `atLimit` is 0.
 
-Langfuse (public API v2, basic auth with the project keys). Organisations created from 2026-09-16 have only the v2 API. Each request ran against a Langfuse project on 2026-10-13, which checks the request shape. None ran against a product that uses this package:
+Langfuse (public API v2, basic auth with the project keys). Organisations created from 2026-09-16 have only the v2 API. Each request ran against a Langfuse project on 2026-10-13, which checks the request shape. Before 2026-10-15, none ran against a product that uses this package:
 
-- Start-up: `GET /api/public/v2/observations?name=flywheel.startup&fromStartTime=<15 minutes ago>&toStartTime=<now>&limit=1`. It passes when `data` is not empty.
+- Start-up: `GET /api/public/v2/observations?name=flywheel.startup&fromStartTime=<15 minutes ago>&toStartTime=<now>&limit=1`. It passes when `data` is not empty. On 2026-10-15 it returned the start-up spans of `examples/langfuse/`.
 - Users: `GET /api/public/v2/metrics?query=<{"view":"observations","metrics":[{"measure":"uniqueUserIds","aggregation":"count"}],"dimensions":[],"filters":[],"fromTimestamp":"<1 day ago>","toTimestamp":"<now>"}>`. It passes when `count_uniqueUserIds` is over 1. Unverified: Langfuse fills `userId` from `user.id` or `langfuse.user.id`. Whether it also reads `enduser.id` is not known, so the count can be 0 with correct telemetry.
-- Feedback join: `GET /api/public/v2/observations?name=user_feedback&fromStartTime=<1 day ago>&toStartTime=<now>`, then for each row `GET /api/public/v2/observations?traceId=<traceId>`. It passes when each `parentObservationId` is an observation in its trace. Unverified: no feedback row from this package was in the project.
+- Feedback join: `GET /api/public/v2/observations?name=user_feedback&fromStartTime=<1 day ago>&toStartTime=<now>`, then for each row `GET /api/public/v2/observations?traceId=<traceId>`. It passes when each `parentObservationId` is an observation in its trace. On 2026-10-15, the feedback of `examples/langfuse/` had the turn observation as its parent.
 - Attribute limit: `GET /api/public/v2/observations?fromStartTime=<1 day ago>&toStartTime=<now>&fields=core,metadata`, then count the `metadata` keys of each turn observation. Unverified: the metadata also holds resource and scope keys, so the count is an upper bound.
 
 Tests:
@@ -332,13 +342,28 @@ A fault in a turn belongs to one of three layers. Find the layer before you chan
 
 ## Backends
 
+The practices and the attribute names are the same on every backend. A backend changes the telemetry registration only: the tracer provider, the logger provider, the exporter and the `init()` options. Do not rename an attribute, or write a second record, for one backend. When a backend cannot show a practice, list it as a gap in that backend's `AGENTS.md`. Do not change the package for it.
+
+### Add a backend
+
+For example, Arize Phoenix through an OTLP exporter:
+
+1. Copy `examples/langfuse/` to `examples/<backend>/`.
+2. Change `telemetry.ts`: register the backend's span processor or exporter, keep the context manager and the attribute limit of 1024, and name the required environment variables in `requireEnv()`. Register a logger provider only when the backend ingests log records.
+3. Change the `init()` options in `main.ts`, if the backend needs any.
+4. Write its `AGENTS.md`: where each practice lands, how to see it, and the gaps. Mark each row that did not run against a live backend as unverified.
+5. Add an `example:<backend>` script to `package.json`, and a case to `test/backends.test.ts` for the missing variables.
+6. Add a section for the backend below.
+
 ### Azure Monitor
 
 - Exporter: `useAzureMonitor()` from `@azure/monitor-opentelemetry`, with the Application Insights connection string. FLS calls it in `apps/server/telemetry.mjs` in fls-ai-tool.
 - Attribute limit: raise `OTEL_SPAN_ATTRIBUTE_COUNT_LIMIT` from the SDK default of 128. FLS sets 1024. At 128, the SDK drops keys past the limit, with no error. The contract suite uses 1024 (`test/sdk.ts`).
+- Sampling: in `@azure/monitor-opentelemetry` 1.19.0, the default sampler limits traces per second, from a rate of zero at start-up. It drops the `flywheel.startup` span, and the self-check warns `startup_span_not_sampled`. `examples/azure-appi/telemetry.ts` sets `tracesPerSecond: 0` and `samplingRatio: 1`. Source: `RateLimitedSampler` in `@azure/monitor-opentelemetry-exporter`, and a run of the example on 2026-10-15.
 - Where data lands (unverified from code; from the FLS query notes in `evals/flywheel/agent-knowledge/kql-patterns/tables.md`):
   - Incoming request spans go to `requests`. Attributes that node handles and `set()` write on the request span are in `customDimensions`.
   - AI SDK model call spans (`ai.*`) go to `dependencies`, linked by `operation_Id`.
+  - The turn span is `INTERNAL`, so it goes to `dependencies`, with the turn record in `customDimensions`. Confirmed by a run of `examples/azure-appi/` on 2026-10-15.
   - A single dimension value is cut at about 8 KB.
 - Where feedback lands. These rows are confirmed from the exporter code (`@azure/monitor-opentelemetry-exporter` 1.0.0-beta.44, `dist/esm/utils/spanUtils.js` and `dist/esm/utils/logUtils.js`), not from a live resource:
   - The `feedback()` span is `INTERNAL`, so it goes to `dependencies`. Its `operation_Id` is the turn's trace ID, and its `operation_ParentId` is the turn span ID.
@@ -346,15 +371,18 @@ A fault in a turn belongs to one of three layers. Find the layer before you chan
   - `metadata()` log records go to `customEvents` the same way. Their `operation_ParentId` is the first 16 hex digits of the trace ID.
   - FLS's saved queries (`user_feedback.kql` and `tester_feedback.kql` in fls-ai-tool) read `customEvents` by `name` and `customDimensions`. They keep working when FLS moves from `metadata()` to `feedback()` with `azureCustomEvents`, the same event names and the attribute mapping under practice 6.
 
+- `examples/azure-appi/AGENTS.md` maps each practice to Application Insights, from a run on 2026-10-15.
+
 ### Langfuse
 
 - Exporter: `LangfuseSpanProcessor` from `@langfuse/otel`, added to the tracer provider. FLS registers it on a `NodeTracerProvider` in `apps/server/telemetry.mjs` in fls-ai-tool, and runs it only when Azure Monitor is off.
-- Spans become observations on a Langfuse trace.
+- Span filter: by default, the processor drops each span with no `gen_ai.*` attribute that no known LLM library wrote. That drops `flywheel.startup` and the `feedback()` spans. Set `shouldExportSpan` to keep every span, as `examples/langfuse/telemetry.ts` does.
+- Spans become observations on a Langfuse trace. Span attributes are observation metadata, with the prefix `attributes.`.
 - Token usage comes from the `gen_ai.*` attributes that AI SDK telemetry writes, when `aiSdkTelemetry()` turns it on.
 - Langfuse ingests traces only. It does not ingest OpenTelemetry log records, so `metadata()` events and the `azureCustomEvents` log records do not arrive.
-- A `feedback()` span becomes an observation on the turn's trace, under the turn span's observation. The Flywheel writes its own feedback as spans for the same reason (`src/feedback/emit.ts` in the Flywheel repository).
+- A `feedback()` span becomes an observation on the turn's trace, under the turn span's observation. It is not a Langfuse score. The Flywheel writes its own feedback as spans for the same reason (`src/feedback/emit.ts` in the Flywheel repository).
 - Feedback with no turn ref becomes an observation on the session's trace. That trace has no root observation, because the parent span is never written. Unverified: how Langfuse shows an observation whose parent is missing (assumed: at the top level of the trace).
-- Unverified: how Langfuse shows `app.*` attributes (assumed: observation metadata).
+- `examples/langfuse/AGENTS.md` maps each practice to Langfuse, from a run on 2026-10-15.
 
 ## Rules for an agent changing this package
 
