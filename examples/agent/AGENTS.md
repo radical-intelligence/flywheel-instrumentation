@@ -4,6 +4,11 @@ This file is for an AI agent that builds observability into an agentic product. 
 
 The package contract is in `AGENTS.md` at the repository root. This file says where the example meets each principle, and how to extend it without breaking one.
 
+The principles are the same on every backend. This folder holds the agent, with console exporters. Two folders run the same agent on a real backend, and change only the telemetry registration:
+
+- `examples/azure-appi/`: Azure Monitor (Application Insights). See `examples/azure-appi/AGENTS.md`.
+- `examples/langfuse/`: Langfuse. See `examples/langfuse/AGENTS.md`.
+
 ## What the example is
 
 A small agent that answers office questions. The model calls one tool, `lookup`, which searches three hard-coded facts, then answers with the result.
@@ -22,7 +27,7 @@ A small agent that answers office questions. The model calls one tool, `lookup`,
 | Agent loop and tools | Vercel AI SDK 5 (`streamText`, `tool`, `stopWhen`) |
 | Model | AI SDK mock model by default. An OpenAI model when `EXAMPLE_OPENAI_MODEL` and `OPENAI_API_KEY` are set |
 | Tool input schema | Zod 4 |
-| Telemetry | OpenTelemetry SDK. Console exporters by default |
+| Telemetry | OpenTelemetry SDK. Console exporters by default. Azure Monitor or Langfuse in the backend folders |
 | Instrumentation | This package, imported by its name |
 
 The example runs with no API key and no network.
@@ -31,9 +36,9 @@ The example runs with no API key and no network.
 
 | File | Responsibility |
 |---|---|
-| `telemetry.ts` | Registers the trace and log providers, the context manager and the attribute limit. The only file that knows the backend |
+| `telemetry.ts` | Registers the trace and log providers, the context manager and the attribute limit, with console exporters. The only file that knows the backend. `requireEnv()` stops a backend example when a variable is missing |
 | `schemas.ts` | The schema module: every node schema, exported as `schemas` |
-| `main.ts` | Start-up order: telemetry, `init({ schemas })`, self-check, serve |
+| `main.ts` | Start-up order: telemetry, `init({ schemas })`, self-check, serve. `start()` and `run()` take the backend registration and the `init()` options, so each backend folder reuses them |
 | `app.ts` | The routes: the turn, the timeline, the node handles and the feedback |
 | `model.ts` | The model. Mock by default |
 | `test/example.test.ts` (repository root) | Starts the agent, sends one chat and one feedback, and checks the exported spans |
@@ -43,6 +48,8 @@ The example runs with no API key and no network.
 ```bash
 npm run build                # the example imports dist/
 npm run example              # port 3000, spans and log records on the console
+npm run example:azure        # needs APPLICATIONINSIGHTS_CONNECTION_STRING
+npm run example:langfuse     # needs LANGFUSE_PUBLIC_KEY and LANGFUSE_SECRET_KEY
 npm run example:manifest     # writes instrumentation-manifest.json
 npm test                     # includes the example test
 ```
@@ -81,7 +88,7 @@ Rule: at start-up, the product proves that telemetry reaches the backend before 
 
 In the example: `main.ts` registers telemetry before `init()`. It reads the self-check report and refuses to start when the check fails. `telemetry.ts` raises the span attribute limit to 1024, because the SDK default of 128 drops keys with no error.
 
-When you extend it: keep the order in `main.ts`. When you change the backend, keep the attribute limit and confirm the `flywheel.startup` span arrives in the backend.
+When you extend it: keep the order in `main.ts`. When you change the backend, keep the attribute limit and confirm the `flywheel.startup` span arrives in the backend. A sampler or a span filter can drop it (see the backend folders).
 
 ### 5. Each evaluator lists the data it needs
 
@@ -112,7 +119,7 @@ In the example: none. The Flywheel owns this practice. Principles 1 to 6 give it
 | Add a tool | Define it with `tool()` from `ai`. Run its body in `fw.timed()`. Add its schema to `schemas.ts` and write through `fw.tool(name, schema)`. Write the manifest again. Extend `test/example.test.ts` |
 | Add a model call or a sub-agent | Run it inside the same `turn()`. Pass `fw.aiSdkTelemetry()` to the AI SDK call. Add a `model` or `agent` schema |
 | Use a real model | Set `EXAMPLE_OPENAI_MODEL` and `OPENAI_API_KEY`, or change `model.ts` |
-| Use another backend | Change `telemetry.ts` only. Azure Monitor: `useAzureMonitor()` and `init({ azureCustomEvents: true })`. Langfuse: add `LangfuseSpanProcessor`. Langfuse ingests spans only. See "Backends" in the root `AGENTS.md` |
+| Use another backend | Use `examples/azure-appi/` or `examples/langfuse/`. For a new backend, follow "Add a backend" in the root `AGENTS.md` |
 | Use another agent framework | Keep `turn()` as the root. Write the model and tool steps as spans under it, through `fw.timed()` and the node handles. `recordStreamPart` reads AI SDK 5 stream parts only |
 | Add a feedback kind | Add a route that calls `fw.feedback()` with the turn ref and its own `name` and `kind` |
 

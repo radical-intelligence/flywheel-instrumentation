@@ -34,12 +34,25 @@ npm run example:manifest   # writes examples/agent/instrumentation-manifest.json
 
 `test/example.test.ts` boots the example and checks the spans it exports.
 
+The same agent runs on two backends. Each folder holds only the telemetry registration, an entry point and an `AGENTS.md` that maps the practices to that backend:
+
+| Folder | Backend | Command | Environment |
+|---|---|---|---|
+| `examples/azure-appi/` | Azure Monitor (Application Insights) | `npm run example:azure` | `APPLICATIONINSIGHTS_CONNECTION_STRING` |
+| `examples/langfuse/` | Langfuse | `npm run example:langfuse` | `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, optional `LANGFUSE_BASE_URL` |
+
+Each stops with exit code 1 when a required variable is missing.
+
 ## Backends
+
+The seven practices are the target on every backend. FLS sends its telemetry to Application Insights today. Langfuse, Arize and other OpenTelemetry backends implement the same practices, with the same attribute names, through this package. Only the telemetry registration changes.
 
 The package uses only the OpenTelemetry API, so the product picks the exporter. AGENTS.md documents two backends:
 
-- Azure Monitor (Application Insights), through `@azure/monitor-opentelemetry`.
-- Langfuse, through `LangfuseSpanProcessor` from `@langfuse/otel`. Langfuse ingests spans only, not log records.
+- Azure Monitor (Application Insights), through `@azure/monitor-opentelemetry`. See `examples/azure-appi/`.
+- Langfuse, through `LangfuseSpanProcessor` from `@langfuse/otel`. Langfuse ingests spans only, not log records. See `examples/langfuse/`.
+
+To add a backend, for example Arize Phoenix through an OTLP exporter, copy `examples/langfuse/`, change its `telemetry.ts`, write its `AGENTS.md` practice map and add an `example:<backend>` script. "Add a backend" in AGENTS.md has the steps.
 
 ## Tests
 
