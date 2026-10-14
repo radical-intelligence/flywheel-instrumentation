@@ -384,9 +384,14 @@ For example, Arize Phoenix through an OTLP exporter:
 - Feedback with no turn ref becomes an observation on the session's trace. That trace has no root observation, because the parent span is never written. Unverified: how Langfuse shows an observation whose parent is missing (assumed: at the top level of the trace).
 - `examples/langfuse/AGENTS.md` maps each practice to Langfuse, from a run on 2026-10-15.
 
+## Porting to another language
+
+`conformance/` holds the behaviour of the package as language-neutral fixtures: scripted scenarios, and the telemetry each one exports, after normalisation. A port to another language (Python first) implements a runner for the same scenarios, and passes when it writes every expected file byte for byte. `conformance/AGENTS.md` gives the scenario vocabulary, the normalisation rules and the steps to write a runner. Where the code, this file and the fixtures differ, the fixtures are the specification.
+
 ## Rules for an agent changing this package
 
 - Keep every case in `test/contract.ts` passing. Do not change an assertion to make a change pass. If a change of behaviour is intended, change the case in the same PR and say why in the PR body.
+- Keep every scenario in `conformance/` passing. For an intended change of behaviour, change the scenarios, run `npm run conformance:update`, and review each changed expected file (see `conformance/AGENTS.md`).
 - Add a case to `test/contract.ts` for each new behaviour. Cases use `node:assert` and the SDK in `test/sdk.ts`, with no test framework globals, so any runner can run them.
 - Keep the case that reads `flywheel()` before `init()` first in the list, and the case that reads the start-up span of the first `init()` second.
 - Update the status lines and test lists in this file in the same PR.

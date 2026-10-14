@@ -58,6 +58,8 @@ To add a backend, for example Arize Phoenix through an OTLP exporter, copy `exam
 
 The contract suite in `test/contract.ts` runs each case against a real OpenTelemetry SDK (`test/sdk.ts`).
 
+The conformance fixtures in `conformance/` are the language-neutral specification of the package. A port to another language passes when its runner writes the same output for every scenario. See `conformance/AGENTS.md`.
+
 ```bash
 npm ci
 npm run build
