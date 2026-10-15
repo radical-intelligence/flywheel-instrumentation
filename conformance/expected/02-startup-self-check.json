@@ -1,0 +1,209 @@
+{
+  "logRecords": [],
+  "results": [
+    {
+      "console": [],
+      "op": "init",
+      "step": "0.0"
+    },
+    {
+      "op": "advanceClock",
+      "step": "0.1"
+    },
+    {
+      "op": "span",
+      "step": "0"
+    },
+    {
+      "op": "selfCheck",
+      "step": "1",
+      "value": {
+        "attributeCountLimit": {
+          "source": "sdk",
+          "value": 1024
+        },
+        "attributeCounts": {
+          "nodes": {
+            "tool.search": 3
+          },
+          "turn": 27
+        },
+        "issues": [],
+        "loggerProvider": true,
+        "ok": true,
+        "startupSpan": {
+          "sampled": true,
+          "traceId": "trace-3"
+        },
+        "tracerProvider": true,
+        "valueSizeLimit": 8192
+      }
+    },
+    {
+      "console": [],
+      "op": "init",
+      "step": "2"
+    },
+    {
+      "op": "advanceClock",
+      "step": "3"
+    },
+    {
+      "op": "selfCheck",
+      "step": "4",
+      "value": {
+        "attributeCountLimit": {
+          "source": "sdk",
+          "value": 1024
+        },
+        "attributeCounts": {
+          "nodes": {},
+          "turn": 24
+        },
+        "issues": [],
+        "loggerProvider": true,
+        "ok": true,
+        "startupSpan": {
+          "sampled": true,
+          "traceId": "trace-4"
+        },
+        "tracerProvider": true,
+        "valueSizeLimit": 8192
+      }
+    },
+    {
+      "console": [],
+      "op": "init",
+      "step": "5"
+    },
+    {
+      "op": "selfCheck",
+      "step": "6",
+      "value": {
+        "attributeCountLimit": {
+          "source": "sdk",
+          "value": 1024
+        },
+        "attributeCounts": {
+          "nodes": {},
+          "turn": 24
+        },
+        "issues": [],
+        "loggerProvider": true,
+        "ok": true,
+        "startupSpan": {
+          "sampled": true,
+          "traceId": "trace-5"
+        },
+        "tracerProvider": true,
+        "valueSizeLimit": 8192
+      }
+    }
+  ],
+  "scenario": "02-startup-self-check",
+  "spans": [
+    {
+      "attributes": {
+        "flywheel.attribute_count_limit": 1024,
+        "flywheel.schema.attribute_count": 27,
+        "flywheel.schema.node_count": 1,
+        "flywheel.self_check.issues": [],
+        "flywheel.self_check.ok": true,
+        "flywheel.version": "<version>"
+      },
+      "durationMs": 0,
+      "events": [],
+      "kind": "INTERNAL",
+      "name": "flywheel.startup",
+      "parent": null,
+      "path": "flywheel.startup",
+      "scope": "flywheel",
+      "startMs": 0,
+      "status": {
+        "code": "UNSET"
+      },
+      "trace": "trace-1"
+    },
+    {
+      "attributes": {},
+      "durationMs": 10,
+      "events": [],
+      "kind": "SERVER",
+      "name": "request",
+      "parent": null,
+      "path": "request",
+      "scope": "conformance",
+      "startMs": 0,
+      "status": {
+        "code": "UNSET"
+      },
+      "trace": "trace-2"
+    },
+    {
+      "attributes": {
+        "flywheel.attribute_count_limit": 1024,
+        "flywheel.schema.attribute_count": 27,
+        "flywheel.schema.node_count": 1,
+        "flywheel.self_check.issues": [],
+        "flywheel.self_check.ok": true,
+        "flywheel.version": "<version>"
+      },
+      "durationMs": 0,
+      "events": [],
+      "kind": "INTERNAL",
+      "name": "flywheel.startup",
+      "parent": null,
+      "path": "flywheel.startup #2",
+      "scope": "flywheel",
+      "startMs": 10,
+      "status": {
+        "code": "UNSET"
+      },
+      "trace": "trace-3"
+    },
+    {
+      "attributes": {
+        "flywheel.attribute_count_limit": 1024,
+        "flywheel.schema.attribute_count": 24,
+        "flywheel.schema.node_count": 0,
+        "flywheel.self_check.issues": [],
+        "flywheel.self_check.ok": true,
+        "flywheel.version": "<version>"
+      },
+      "durationMs": 0,
+      "events": [],
+      "kind": "INTERNAL",
+      "name": "flywheel.startup",
+      "parent": null,
+      "path": "flywheel.startup #3",
+      "scope": "flywheel",
+      "startMs": 15,
+      "status": {
+        "code": "UNSET"
+      },
+      "trace": "trace-4"
+    },
+    {
+      "attributes": {
+        "flywheel.attribute_count_limit": 1024,
+        "flywheel.schema.attribute_count": 24,
+        "flywheel.schema.node_count": 0,
+        "flywheel.self_check.issues": [],
+        "flywheel.self_check.ok": true,
+        "flywheel.version": "<version>"
+      },
+      "durationMs": 0,
+      "events": [],
+      "kind": "INTERNAL",
+      "name": "flywheel.startup",
+      "parent": null,
+      "path": "flywheel.startup #4",
+      "scope": "flywheel",
+      "startMs": 15,
+      "status": {
+        "code": "UNSET"
+      },
+      "trace": "trace-5"
+    }
+  ]
+}

@@ -1,0 +1,122 @@
+{
+  "$schema": "../scenario.schema.json",
+  "name": "15-timeline",
+  "description": "The request timeline on one clock: span offsets, repeated names, open spans, marks, values, timed scopes, usage and the flat app.timeline.* attributes.",
+  "covers": [
+    "practice 2: a timeline records spans as offsets from its start, with one decimal place, in start order",
+    "practice 2: a repeated span name gets a #n suffix, and a span still open is left out",
+    "practice 2: a span keeps its first end time, and its close attributes merge with its open attributes",
+    "practice 2: mark keeps the first time, markLast keeps the last, and set drops a value that is not finite",
+    "practice 2: timeline() records nothing outside a request, and timed() outside a request runs its work",
+    "practice 2: timed spans take the scope as a prefix, scope() adds a prefix with no span, and annotate() adds attributes to the span of the scope",
+    "practice 2: a timed span closes when its work throws, and the error is rethrown",
+    "practice 2: the request span opens at zero and closes on endRequest, once",
+    "practice 2: recordUsage records token counts and output tokens per second over the visible stream, less reasoning tokens",
+    "practice 2: recordUsage reads the AI SDK 4 field names too, and leaves out the rate when no visible token was marked",
+    "practice 2: timelineAttributes flattens the timeline into app.timeline.* attributes, and set() puts them on the active span"
+  ],
+  "setup": {
+    "clock": "2026-10-01T00:00:00.000Z",
+    "tracerProvider": true,
+    "loggerProvider": true,
+    "attributeCountLimit": 1024,
+    "sampler": "always_on"
+  },
+  "steps": [
+    { "op": "init" },
+    {
+      "op": "span",
+      "name": "request",
+      "kind": "SERVER",
+      "steps": [
+        {
+          "op": "withTimeline",
+          "timeline": "request",
+          "request": true,
+          "steps": [
+            { "op": "advanceClock", "ms": 5 },
+            { "op": "timelineSpan", "name": "b", "handle": "b", "attributes": { "n": 1 } },
+            { "op": "advanceClock", "ms": 10 },
+            { "op": "timelineSpan", "name": "a", "handle": "a" },
+            { "op": "timelineClose", "handle": "b" },
+            { "op": "advanceClock", "ms": 2.34 },
+            { "op": "timelineClose", "handle": "a", "attributes": { "done": true } },
+            { "op": "timelineSpan", "name": "a", "handle": "a2" },
+            { "op": "advanceClock", "ms": 0.06 },
+            { "op": "timelineClose", "handle": "a2" },
+            { "op": "timelineClose", "handle": "b" },
+            { "op": "timelineSpan", "name": "open", "handle": "open" },
+            { "op": "mark", "name": "m" },
+            { "op": "markLast", "name": "l" },
+            { "op": "advanceClock", "ms": 1 },
+            { "op": "mark", "name": "m" },
+            { "op": "markLast", "name": "l" },
+            { "op": "timelineSet", "name": "x", "value": 3 },
+            { "op": "timelineSet", "name": "x", "value": 4 },
+            { "op": "timelineSet", "name": "nan", "value": { "$number": "NaN" } },
+            { "op": "timelineSet", "name": "inf", "value": { "$number": "Infinity" } },
+            {
+              "op": "timed",
+              "name": "search",
+              "attributes": { "leg": 0 },
+              "steps": [
+                { "op": "advanceClock", "ms": 100 },
+                {
+                  "op": "timed",
+                  "name": "leg",
+                  "steps": [
+                    { "op": "advanceClock", "ms": 50 },
+                    { "op": "annotate", "attributes": { "hits": 3 } }
+                  ]
+                },
+                {
+                  "op": "scope",
+                  "name": "rerank",
+                  "steps": [
+                    { "op": "timelineSpan", "name": "call", "handle": "call" },
+                    { "op": "advanceClock", "ms": 10 },
+                    { "op": "timelineClose", "handle": "call" },
+                    { "op": "annotate", "attributes": { "ignored": true } }
+                  ]
+                },
+                { "op": "annotate", "attributes": { "semanticRanker": true } }
+              ]
+            },
+            {
+              "op": "timed",
+              "name": "generate",
+              "steps": [
+                { "op": "mark", "name": "chat.firstText" },
+                { "op": "advanceClock", "ms": 400 },
+                { "op": "markLast", "name": "chat.lastToken" }
+              ],
+              "throw": { "name": "Error", "message": "model failed" }
+            },
+            {
+              "op": "recordUsage",
+              "timeline": "request",
+              "usage": { "inputTokens": 900, "outputTokens": 120, "outputTokenDetails": { "reasoningTokens": 20 }, "inputTokenDetails": { "cacheReadTokens": 100 } }
+            },
+            { "op": "advanceClock", "ms": 3 },
+            { "op": "endRequest", "timeline": "request" },
+            { "op": "advanceClock", "ms": 7 },
+            { "op": "endRequest", "timeline": "request" },
+            { "op": "setTimelineAttributes", "timeline": "request" }
+          ]
+        },
+        { "op": "mark", "name": "outside" },
+        { "op": "timelineSet", "name": "outside", "value": 1 },
+        { "op": "timed", "name": "outside", "steps": [{ "op": "advanceClock", "ms": 1 }] },
+        { "op": "timelineJSON", "timeline": "request" }
+      ]
+    },
+    {
+      "op": "withTimeline",
+      "timeline": "legacy",
+      "steps": [
+        { "op": "recordUsage", "timeline": "legacy", "usage": { "inputTokens": 10, "outputTokens": 5, "reasoningTokens": 2, "cachedInputTokens": 4 } },
+        { "op": "timelineJSON", "timeline": "legacy" }
+      ]
+    }
+  ]
+}

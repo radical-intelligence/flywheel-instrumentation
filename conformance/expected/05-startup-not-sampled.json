@@ -1,0 +1,46 @@
+{
+  "logRecords": [],
+  "results": [
+    {
+      "console": [
+        {
+          "level": "warn",
+          "text": "flywheel self-check: startup_span_not_sampled: the sampler dropped the flywheel.startup span, so a query cannot find it"
+        }
+      ],
+      "op": "init",
+      "step": "0"
+    },
+    {
+      "op": "selfCheck",
+      "step": "1",
+      "value": {
+        "attributeCountLimit": {
+          "source": "sdk",
+          "value": 1024
+        },
+        "attributeCounts": {
+          "nodes": {},
+          "turn": 24
+        },
+        "issues": [
+          {
+            "code": "startup_span_not_sampled",
+            "level": "warning",
+            "message": "the sampler dropped the flywheel.startup span, so a query cannot find it"
+          }
+        ],
+        "loggerProvider": true,
+        "ok": true,
+        "startupSpan": {
+          "sampled": false,
+          "traceId": "trace-1"
+        },
+        "tracerProvider": true,
+        "valueSizeLimit": 8192
+      }
+    }
+  ],
+  "scenario": "05-startup-not-sampled",
+  "spans": []
+}

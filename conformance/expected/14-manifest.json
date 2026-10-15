@@ -1,0 +1,894 @@
+{
+  "logRecords": [],
+  "results": [
+    {
+      "console": [],
+      "op": "init",
+      "step": "0"
+    },
+    {
+      "op": "manifest",
+      "step": "1",
+      "value": {
+        "attributes": [
+          {
+            "maxLength": 32,
+            "name": "app.agent.planner.goal",
+            "source": "agent.planner",
+            "type": "string"
+          },
+          {
+            "name": "app.agent.planner.goal.truncated",
+            "source": "agent.planner",
+            "type": "boolean"
+          },
+          {
+            "aliasOf": "app.agent.planner.goal",
+            "maxLength": 32,
+            "name": "app.agent.planner.objective",
+            "source": "agent.planner",
+            "type": "string",
+            "until": "2026-12-01"
+          },
+          {
+            "aliasOf": "app.agent.planner.goal.truncated",
+            "name": "app.agent.planner.objective.truncated",
+            "source": "agent.planner",
+            "type": "boolean",
+            "until": "2026-12-01"
+          },
+          {
+            "name": "app.model.analysis.ttft_ms",
+            "source": "model.analysis",
+            "type": "number"
+          },
+          {
+            "name": "app.tool.search.cached",
+            "source": "tool.search",
+            "type": "boolean"
+          },
+          {
+            "maxLength": 1024,
+            "name": "app.tool.search.chapters",
+            "source": "tool.search",
+            "type": "string[]"
+          },
+          {
+            "name": "app.tool.search.chapters.truncated",
+            "source": "tool.search",
+            "type": "boolean"
+          },
+          {
+            "maxLength": 64,
+            "name": "app.tool.search.query",
+            "source": "tool.search",
+            "type": "string"
+          },
+          {
+            "name": "app.tool.search.query.truncated",
+            "source": "tool.search",
+            "type": "boolean"
+          },
+          {
+            "name": "app.tool.search.result_count",
+            "source": "tool.search",
+            "type": "count"
+          },
+          {
+            "name": "app.tool.search.status",
+            "source": "tool.search",
+            "type": "enum",
+            "values": [
+              "ok",
+              "error"
+            ]
+          },
+          {
+            "name": "app.turn.answer",
+            "source": "turn",
+            "type": "string"
+          },
+          {
+            "name": "app.turn.answer.truncated",
+            "source": "turn",
+            "type": "boolean"
+          },
+          {
+            "name": "app.turn.guardrail.<name>.passed",
+            "source": "turn",
+            "type": "boolean"
+          },
+          {
+            "name": "app.turn.guardrail.<name>.reason",
+            "source": "turn",
+            "type": "string"
+          },
+          {
+            "name": "app.turn.guardrail.<name>.reason.truncated",
+            "source": "turn",
+            "type": "boolean"
+          },
+          {
+            "name": "app.turn.message_count",
+            "source": "turn",
+            "type": "count"
+          },
+          {
+            "name": "app.turn.messages",
+            "source": "turn",
+            "type": "string"
+          },
+          {
+            "name": "app.turn.messages.truncated",
+            "source": "turn",
+            "type": "boolean"
+          },
+          {
+            "name": "app.turn.ms",
+            "source": "turn",
+            "type": "number"
+          },
+          {
+            "name": "app.turn.outcome",
+            "source": "turn",
+            "type": "enum",
+            "values": [
+              "answered",
+              "refused",
+              "error",
+              "aborted"
+            ]
+          },
+          {
+            "name": "app.turn.query",
+            "source": "turn",
+            "type": "string"
+          },
+          {
+            "name": "app.turn.query.truncated",
+            "source": "turn",
+            "type": "boolean"
+          },
+          {
+            "name": "app.turn.timing.<step>",
+            "source": "turn",
+            "type": "number"
+          },
+          {
+            "name": "app.turn.tool_called",
+            "source": "turn",
+            "type": "boolean"
+          },
+          {
+            "name": "enduser.id",
+            "source": "core",
+            "type": "string"
+          },
+          {
+            "name": "flywheel.attribute_error",
+            "source": "core",
+            "type": "string[]"
+          },
+          {
+            "name": "gen_ai.agent.name",
+            "source": "turn",
+            "type": "string"
+          },
+          {
+            "name": "gen_ai.conversation.id",
+            "source": "turn",
+            "type": "string"
+          },
+          {
+            "name": "gen_ai.operation.name",
+            "source": "turn",
+            "type": "enum",
+            "values": [
+              "invoke_agent"
+            ]
+          },
+          {
+            "name": "gen_ai.request.model",
+            "source": "turn",
+            "type": "string"
+          },
+          {
+            "name": "gen_ai.request.model.truncated",
+            "source": "turn",
+            "type": "boolean"
+          },
+          {
+            "name": "gen_ai.usage.input_tokens",
+            "source": "turn",
+            "type": "count"
+          },
+          {
+            "name": "gen_ai.usage.output_tokens",
+            "source": "turn",
+            "type": "count"
+          },
+          {
+            "name": "session.id",
+            "source": "core",
+            "type": "string"
+          }
+        ],
+        "manifestVersion": 1,
+        "package": {
+          "name": "<package>",
+          "version": "<version>"
+        }
+      }
+    },
+    {
+      "op": "registerAttributes",
+      "step": "2"
+    },
+    {
+      "op": "registerAttributes",
+      "step": "3"
+    },
+    {
+      "op": "manifest",
+      "step": "4",
+      "value": {
+        "attributes": [
+          {
+            "maxLength": 32,
+            "name": "app.agent.planner.goal",
+            "source": "agent.planner",
+            "type": "string"
+          },
+          {
+            "name": "app.agent.planner.goal.truncated",
+            "source": "agent.planner",
+            "type": "boolean"
+          },
+          {
+            "aliasOf": "app.agent.planner.goal",
+            "maxLength": 32,
+            "name": "app.agent.planner.objective",
+            "source": "agent.planner",
+            "type": "string",
+            "until": "2026-12-01"
+          },
+          {
+            "aliasOf": "app.agent.planner.goal.truncated",
+            "name": "app.agent.planner.objective.truncated",
+            "source": "agent.planner",
+            "type": "boolean",
+            "until": "2026-12-01"
+          },
+          {
+            "name": "app.model.analysis.ttft_ms",
+            "source": "model.analysis",
+            "type": "number"
+          },
+          {
+            "name": "app.tool.search.cached",
+            "source": "tool.search",
+            "type": "boolean"
+          },
+          {
+            "maxLength": 1024,
+            "name": "app.tool.search.chapters",
+            "source": "tool.search",
+            "type": "string[]"
+          },
+          {
+            "name": "app.tool.search.chapters.truncated",
+            "source": "tool.search",
+            "type": "boolean"
+          },
+          {
+            "maxLength": 64,
+            "name": "app.tool.search.query",
+            "source": "tool.search",
+            "type": "string"
+          },
+          {
+            "name": "app.tool.search.query.truncated",
+            "source": "tool.search",
+            "type": "boolean"
+          },
+          {
+            "name": "app.tool.search.result_count",
+            "source": "tool.search",
+            "type": "count"
+          },
+          {
+            "name": "app.tool.search.status",
+            "source": "tool.search",
+            "type": "enum",
+            "values": [
+              "ok",
+              "error"
+            ]
+          },
+          {
+            "name": "app.turn.answer",
+            "source": "turn",
+            "type": "string"
+          },
+          {
+            "name": "app.turn.answer.truncated",
+            "source": "turn",
+            "type": "boolean"
+          },
+          {
+            "name": "app.turn.guardrail.<name>.passed",
+            "source": "turn",
+            "type": "boolean"
+          },
+          {
+            "name": "app.turn.guardrail.<name>.reason",
+            "source": "turn",
+            "type": "string"
+          },
+          {
+            "name": "app.turn.guardrail.<name>.reason.truncated",
+            "source": "turn",
+            "type": "boolean"
+          },
+          {
+            "name": "app.turn.message_count",
+            "source": "turn",
+            "type": "count"
+          },
+          {
+            "name": "app.turn.messages",
+            "source": "turn",
+            "type": "string"
+          },
+          {
+            "name": "app.turn.messages.truncated",
+            "source": "turn",
+            "type": "boolean"
+          },
+          {
+            "name": "app.turn.ms",
+            "source": "turn",
+            "type": "number"
+          },
+          {
+            "name": "app.turn.outcome",
+            "source": "turn",
+            "type": "enum",
+            "values": [
+              "answered",
+              "refused",
+              "error",
+              "aborted"
+            ]
+          },
+          {
+            "name": "app.turn.query",
+            "source": "turn",
+            "type": "string"
+          },
+          {
+            "name": "app.turn.query.truncated",
+            "source": "turn",
+            "type": "boolean"
+          },
+          {
+            "name": "app.turn.status",
+            "source": "contract.turn",
+            "type": "enum",
+            "values": [
+              "ok",
+              "error"
+            ]
+          },
+          {
+            "name": "app.turn.timing.<step>",
+            "source": "turn",
+            "type": "number"
+          },
+          {
+            "name": "app.turn.tool_called",
+            "source": "turn",
+            "type": "boolean"
+          },
+          {
+            "name": "enduser.id",
+            "source": "core",
+            "type": "string"
+          },
+          {
+            "name": "flywheel.attribute_error",
+            "source": "core",
+            "type": "string[]"
+          },
+          {
+            "name": "gen_ai.agent.name",
+            "source": "turn",
+            "type": "string"
+          },
+          {
+            "name": "gen_ai.conversation.id",
+            "source": "turn",
+            "type": "string"
+          },
+          {
+            "name": "gen_ai.operation.name",
+            "source": "turn",
+            "type": "enum",
+            "values": [
+              "invoke_agent"
+            ]
+          },
+          {
+            "name": "gen_ai.request.model",
+            "source": "turn",
+            "type": "string"
+          },
+          {
+            "name": "gen_ai.request.model.truncated",
+            "source": "turn",
+            "type": "boolean"
+          },
+          {
+            "name": "gen_ai.usage.input_tokens",
+            "source": "turn",
+            "type": "count"
+          },
+          {
+            "name": "gen_ai.usage.output_tokens",
+            "source": "turn",
+            "type": "count"
+          },
+          {
+            "name": "session.id",
+            "source": "core",
+            "type": "string"
+          }
+        ],
+        "manifestVersion": 1,
+        "package": {
+          "name": "<package>",
+          "version": "<version>"
+        }
+      }
+    },
+    {
+      "op": "registerAttributes",
+      "step": "5"
+    },
+    {
+      "op": "registerAttributes",
+      "step": "6"
+    },
+    {
+      "op": "manifest",
+      "step": "7",
+      "value": {
+        "attributes": [
+          {
+            "maxLength": 32,
+            "name": "app.agent.planner.goal",
+            "source": "agent.planner",
+            "type": "string"
+          },
+          {
+            "name": "app.agent.planner.goal.truncated",
+            "source": "agent.planner",
+            "type": "boolean"
+          },
+          {
+            "aliasOf": "app.agent.planner.goal",
+            "maxLength": 32,
+            "name": "app.agent.planner.objective",
+            "source": "agent.planner",
+            "type": "string",
+            "until": "2026-12-01"
+          },
+          {
+            "aliasOf": "app.agent.planner.goal.truncated",
+            "name": "app.agent.planner.objective.truncated",
+            "source": "agent.planner",
+            "type": "boolean",
+            "until": "2026-12-01"
+          },
+          {
+            "name": "app.model.analysis.ttft_ms",
+            "source": "model.analysis",
+            "type": "number"
+          },
+          {
+            "name": "app.tool.search.cached",
+            "source": "tool.search",
+            "type": "boolean"
+          },
+          {
+            "maxLength": 1024,
+            "name": "app.tool.search.chapters",
+            "source": "tool.search",
+            "type": "string[]"
+          },
+          {
+            "name": "app.tool.search.chapters.truncated",
+            "source": "tool.search",
+            "type": "boolean"
+          },
+          {
+            "maxLength": 64,
+            "name": "app.tool.search.query",
+            "source": "tool.search",
+            "type": "string"
+          },
+          {
+            "name": "app.tool.search.query.truncated",
+            "source": "tool.search",
+            "type": "boolean"
+          },
+          {
+            "name": "app.tool.search.result_count",
+            "source": "tool.search",
+            "type": "count"
+          },
+          {
+            "name": "app.tool.search.status",
+            "source": "tool.search",
+            "type": "enum",
+            "values": [
+              "ok",
+              "error"
+            ]
+          },
+          {
+            "maxLength": 16,
+            "name": "app.turn.phase",
+            "source": "contract.turn",
+            "type": "string"
+          },
+          {
+            "name": "enduser.id",
+            "source": "core",
+            "type": "string"
+          },
+          {
+            "name": "flywheel.attribute_error",
+            "source": "core",
+            "type": "string[]"
+          },
+          {
+            "name": "session.id",
+            "source": "core",
+            "type": "string"
+          }
+        ],
+        "manifestVersion": 1,
+        "package": {
+          "name": "<package>",
+          "version": "<version>"
+        }
+      }
+    },
+    {
+      "op": "selfCheck",
+      "step": "8",
+      "value": {
+        "attributeCountLimit": {
+          "source": "sdk",
+          "value": 1024
+        },
+        "attributeCounts": {
+          "nodes": {
+            "agent.planner": 4,
+            "model.analysis": 1,
+            "tool.search": 7
+          },
+          "turn": 16
+        },
+        "issues": [],
+        "loggerProvider": true,
+        "ok": true,
+        "startupSpan": {
+          "sampled": true,
+          "traceId": "trace-2"
+        },
+        "tracerProvider": true,
+        "valueSizeLimit": 8192
+      }
+    },
+    {
+      "op": "turn",
+      "ref": {
+        "spanId": "span:invoke_agent example-agent",
+        "traceId": "trace-3"
+      },
+      "returned": null,
+      "step": "9"
+    },
+    {
+      "op": "manifest",
+      "step": "10",
+      "value": {
+        "attributes": [
+          {
+            "maxLength": 32,
+            "name": "app.agent.planner.goal",
+            "source": "agent.planner",
+            "type": "string"
+          },
+          {
+            "name": "app.agent.planner.goal.truncated",
+            "source": "agent.planner",
+            "type": "boolean"
+          },
+          {
+            "aliasOf": "app.agent.planner.goal",
+            "maxLength": 32,
+            "name": "app.agent.planner.objective",
+            "source": "agent.planner",
+            "type": "string",
+            "until": "2026-12-01"
+          },
+          {
+            "aliasOf": "app.agent.planner.goal.truncated",
+            "name": "app.agent.planner.objective.truncated",
+            "source": "agent.planner",
+            "type": "boolean",
+            "until": "2026-12-01"
+          },
+          {
+            "name": "app.model.analysis.ttft_ms",
+            "source": "model.analysis",
+            "type": "number"
+          },
+          {
+            "name": "app.tool.search.cached",
+            "source": "tool.search",
+            "type": "boolean"
+          },
+          {
+            "maxLength": 1024,
+            "name": "app.tool.search.chapters",
+            "source": "tool.search",
+            "type": "string[]"
+          },
+          {
+            "name": "app.tool.search.chapters.truncated",
+            "source": "tool.search",
+            "type": "boolean"
+          },
+          {
+            "maxLength": 64,
+            "name": "app.tool.search.query",
+            "source": "tool.search",
+            "type": "string"
+          },
+          {
+            "name": "app.tool.search.query.truncated",
+            "source": "tool.search",
+            "type": "boolean"
+          },
+          {
+            "name": "app.tool.search.result_count",
+            "source": "tool.search",
+            "type": "count"
+          },
+          {
+            "name": "app.tool.search.status",
+            "source": "tool.search",
+            "type": "enum",
+            "values": [
+              "ok",
+              "error"
+            ]
+          },
+          {
+            "name": "app.turn.answer",
+            "source": "turn",
+            "type": "string"
+          },
+          {
+            "name": "app.turn.answer.truncated",
+            "source": "turn",
+            "type": "boolean"
+          },
+          {
+            "name": "app.turn.guardrail.<name>.passed",
+            "source": "turn",
+            "type": "boolean"
+          },
+          {
+            "name": "app.turn.guardrail.<name>.reason",
+            "source": "turn",
+            "type": "string"
+          },
+          {
+            "name": "app.turn.guardrail.<name>.reason.truncated",
+            "source": "turn",
+            "type": "boolean"
+          },
+          {
+            "name": "app.turn.message_count",
+            "source": "turn",
+            "type": "count"
+          },
+          {
+            "name": "app.turn.messages",
+            "source": "turn",
+            "type": "string"
+          },
+          {
+            "name": "app.turn.messages.truncated",
+            "source": "turn",
+            "type": "boolean"
+          },
+          {
+            "name": "app.turn.ms",
+            "source": "turn",
+            "type": "number"
+          },
+          {
+            "name": "app.turn.outcome",
+            "source": "turn",
+            "type": "enum",
+            "values": [
+              "answered",
+              "refused",
+              "error",
+              "aborted"
+            ]
+          },
+          {
+            "maxLength": 16,
+            "name": "app.turn.phase",
+            "source": "contract.turn",
+            "type": "string"
+          },
+          {
+            "name": "app.turn.query",
+            "source": "turn",
+            "type": "string"
+          },
+          {
+            "name": "app.turn.query.truncated",
+            "source": "turn",
+            "type": "boolean"
+          },
+          {
+            "name": "app.turn.timing.<step>",
+            "source": "turn",
+            "type": "number"
+          },
+          {
+            "name": "app.turn.tool_called",
+            "source": "turn",
+            "type": "boolean"
+          },
+          {
+            "name": "enduser.id",
+            "source": "core",
+            "type": "string"
+          },
+          {
+            "name": "flywheel.attribute_error",
+            "source": "core",
+            "type": "string[]"
+          },
+          {
+            "name": "gen_ai.agent.name",
+            "source": "turn",
+            "type": "string"
+          },
+          {
+            "name": "gen_ai.conversation.id",
+            "source": "turn",
+            "type": "string"
+          },
+          {
+            "name": "gen_ai.operation.name",
+            "source": "turn",
+            "type": "enum",
+            "values": [
+              "invoke_agent"
+            ]
+          },
+          {
+            "name": "gen_ai.request.model",
+            "source": "turn",
+            "type": "string"
+          },
+          {
+            "name": "gen_ai.request.model.truncated",
+            "source": "turn",
+            "type": "boolean"
+          },
+          {
+            "name": "gen_ai.usage.input_tokens",
+            "source": "turn",
+            "type": "count"
+          },
+          {
+            "name": "gen_ai.usage.output_tokens",
+            "source": "turn",
+            "type": "count"
+          },
+          {
+            "name": "session.id",
+            "source": "core",
+            "type": "string"
+          }
+        ],
+        "manifestVersion": 1,
+        "package": {
+          "name": "<package>",
+          "version": "<version>"
+        }
+      }
+    }
+  ],
+  "scenario": "14-manifest",
+  "spans": [
+    {
+      "attributes": {
+        "flywheel.attribute_count_limit": 1024,
+        "flywheel.schema.attribute_count": 36,
+        "flywheel.schema.node_count": 3,
+        "flywheel.self_check.issues": [],
+        "flywheel.self_check.ok": true,
+        "flywheel.version": "<version>"
+      },
+      "durationMs": 0,
+      "events": [],
+      "kind": "INTERNAL",
+      "name": "flywheel.startup",
+      "parent": null,
+      "path": "flywheel.startup",
+      "scope": "flywheel",
+      "startMs": 0,
+      "status": {
+        "code": "UNSET"
+      },
+      "trace": "trace-1"
+    },
+    {
+      "attributes": {
+        "flywheel.attribute_count_limit": 1024,
+        "flywheel.schema.attribute_count": 16,
+        "flywheel.schema.node_count": 3,
+        "flywheel.self_check.issues": [],
+        "flywheel.self_check.ok": true,
+        "flywheel.version": "<version>"
+      },
+      "durationMs": 0,
+      "events": [],
+      "kind": "INTERNAL",
+      "name": "flywheel.startup",
+      "parent": null,
+      "path": "flywheel.startup #2",
+      "scope": "flywheel",
+      "startMs": 0,
+      "status": {
+        "code": "UNSET"
+      },
+      "trace": "trace-2"
+    },
+    {
+      "attributes": {
+        "app.turn.message_count": 0,
+        "app.turn.ms": 0,
+        "app.turn.outcome": "answered",
+        "app.turn.tool_called": false,
+        "gen_ai.agent.name": "example-agent",
+        "gen_ai.operation.name": "invoke_agent"
+      },
+      "durationMs": 0,
+      "events": [],
+      "kind": "INTERNAL",
+      "name": "invoke_agent example-agent",
+      "parent": null,
+      "path": "invoke_agent example-agent",
+      "scope": "flywheel",
+      "startMs": 0,
+      "status": {
+        "code": "UNSET"
+      },
+      "trace": "trace-3"
+    }
+  ]
+}

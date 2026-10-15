@@ -1,0 +1,47 @@
+{
+  "$schema": "../scenario.schema.json",
+  "name": "03-self-check-no-provider",
+  "description": "With no tracer provider and no logger provider, the self-check fails, init() writes the errors to the console, and returns the live instance. In strict mode, init() throws and keeps the previous instance. With no SDK limit, the check reads OTEL_SPAN_ATTRIBUTE_COUNT_LIMIT, else uses 128.",
+  "covers": [
+    "practice 4: with no tracer provider, selfCheck() fails with no_tracer_provider and init() writes it to the console",
+    "practice 4: a failed check does not stop the product: init() returns the live instance",
+    "practice 4: in strict mode, init() throws when the self-check fails, and flywheel() keeps the previous instance",
+    "practice 4: each init() replaces the instance flywheel() returns",
+    "practice 4: with requireLoggerProvider or azureCustomEvents, selfCheck() fails with no_logger_provider",
+    "practice 4: with no SDK limit, selfCheck() reads OTEL_SPAN_ATTRIBUTE_COUNT_LIMIT, else the default of 128",
+    "practice 4: a count over the attribute count limit gives a warning, and the check stays ok when there is no error",
+    "practice 4: with no tracer provider, no start-up span is emitted"
+  ],
+  "setup": {
+    "clock": "2026-10-01T00:00:00.000Z",
+    "tracerProvider": false,
+    "loggerProvider": false,
+    "attributeCountLimit": 1024,
+    "sampler": "always_on"
+  },
+  "steps": [
+    {
+      "op": "init",
+      "options": {
+        "schemas": { "agent": { "planner": { "attributes": { "goal": { "type": "string" } } } } }
+      }
+    },
+    { "op": "selfCheck" },
+    {
+      "op": "init",
+      "options": {
+        "strict": true,
+        "schemas": { "tool": { "search": { "attributes": { "status": { "type": "enum", "values": ["ok"] } } } } }
+      }
+    },
+    { "op": "manifest" },
+    { "op": "env", "set": { "OTEL_SPAN_ATTRIBUTE_COUNT_LIMIT": "20" } },
+    { "op": "selfCheck" },
+    { "op": "init", "options": { "requireLoggerProvider": true } },
+    { "op": "selfCheck" },
+    { "op": "env", "set": { "OTEL_SPAN_ATTRIBUTE_COUNT_LIMIT": null } },
+    { "op": "init", "options": { "azureCustomEvents": true } },
+    { "op": "selfCheck" },
+    { "op": "manifest" }
+  ]
+}

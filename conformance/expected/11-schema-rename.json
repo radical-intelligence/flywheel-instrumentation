@@ -1,0 +1,306 @@
+{
+  "logRecords": [],
+  "results": [
+    {
+      "console": [],
+      "op": "init",
+      "step": "0"
+    },
+    {
+      "op": "handle",
+      "step": "1.0"
+    },
+    {
+      "op": "span",
+      "step": "1"
+    },
+    {
+      "op": "advanceClock",
+      "step": "2"
+    },
+    {
+      "op": "handle",
+      "step": "3.0"
+    },
+    {
+      "op": "span",
+      "step": "3"
+    },
+    {
+      "op": "advanceClock",
+      "step": "4"
+    },
+    {
+      "op": "handle",
+      "step": "5.0"
+    },
+    {
+      "op": "span",
+      "step": "5"
+    },
+    {
+      "op": "manifest",
+      "step": "6",
+      "value": {
+        "attributes": [
+          {
+            "maxLength": 2,
+            "name": "app.agent.planner.goal",
+            "source": "agent.planner",
+            "type": "string"
+          },
+          {
+            "name": "app.agent.planner.goal.truncated",
+            "source": "agent.planner",
+            "type": "boolean"
+          },
+          {
+            "aliasOf": "app.agent.planner.goal",
+            "maxLength": 2,
+            "name": "app.agent.planner.objective",
+            "source": "agent.planner",
+            "type": "string",
+            "until": "2026-10-02"
+          },
+          {
+            "aliasOf": "app.agent.planner.goal.truncated",
+            "name": "app.agent.planner.objective.truncated",
+            "source": "agent.planner",
+            "type": "boolean",
+            "until": "2026-10-02"
+          },
+          {
+            "name": "app.agent.planner.time_to_first_token_ms",
+            "source": "agent.planner",
+            "type": "number"
+          },
+          {
+            "aliasOf": "app.agent.planner.time_to_first_token_ms",
+            "name": "app.agent.planner.ttft_ms",
+            "source": "agent.planner",
+            "type": "number",
+            "until": "2026-10-02"
+          },
+          {
+            "name": "app.turn.answer",
+            "source": "turn",
+            "type": "string"
+          },
+          {
+            "name": "app.turn.answer.truncated",
+            "source": "turn",
+            "type": "boolean"
+          },
+          {
+            "name": "app.turn.guardrail.<name>.passed",
+            "source": "turn",
+            "type": "boolean"
+          },
+          {
+            "name": "app.turn.guardrail.<name>.reason",
+            "source": "turn",
+            "type": "string"
+          },
+          {
+            "name": "app.turn.guardrail.<name>.reason.truncated",
+            "source": "turn",
+            "type": "boolean"
+          },
+          {
+            "name": "app.turn.message_count",
+            "source": "turn",
+            "type": "count"
+          },
+          {
+            "name": "app.turn.messages",
+            "source": "turn",
+            "type": "string"
+          },
+          {
+            "name": "app.turn.messages.truncated",
+            "source": "turn",
+            "type": "boolean"
+          },
+          {
+            "name": "app.turn.ms",
+            "source": "turn",
+            "type": "number"
+          },
+          {
+            "name": "app.turn.outcome",
+            "source": "turn",
+            "type": "enum",
+            "values": [
+              "answered",
+              "refused",
+              "error",
+              "aborted"
+            ]
+          },
+          {
+            "name": "app.turn.query",
+            "source": "turn",
+            "type": "string"
+          },
+          {
+            "name": "app.turn.query.truncated",
+            "source": "turn",
+            "type": "boolean"
+          },
+          {
+            "name": "app.turn.timing.<step>",
+            "source": "turn",
+            "type": "number"
+          },
+          {
+            "name": "app.turn.tool_called",
+            "source": "turn",
+            "type": "boolean"
+          },
+          {
+            "name": "enduser.id",
+            "source": "core",
+            "type": "string"
+          },
+          {
+            "name": "flywheel.attribute_error",
+            "source": "core",
+            "type": "string[]"
+          },
+          {
+            "name": "gen_ai.agent.name",
+            "source": "turn",
+            "type": "string"
+          },
+          {
+            "name": "gen_ai.conversation.id",
+            "source": "turn",
+            "type": "string"
+          },
+          {
+            "name": "gen_ai.operation.name",
+            "source": "turn",
+            "type": "enum",
+            "values": [
+              "invoke_agent"
+            ]
+          },
+          {
+            "name": "gen_ai.request.model",
+            "source": "turn",
+            "type": "string"
+          },
+          {
+            "name": "gen_ai.request.model.truncated",
+            "source": "turn",
+            "type": "boolean"
+          },
+          {
+            "name": "gen_ai.usage.input_tokens",
+            "source": "turn",
+            "type": "count"
+          },
+          {
+            "name": "gen_ai.usage.output_tokens",
+            "source": "turn",
+            "type": "count"
+          },
+          {
+            "name": "session.id",
+            "source": "core",
+            "type": "string"
+          }
+        ],
+        "manifestVersion": 1,
+        "package": {
+          "name": "<package>",
+          "version": "<version>"
+        }
+      }
+    }
+  ],
+  "scenario": "11-schema-rename",
+  "spans": [
+    {
+      "attributes": {
+        "flywheel.attribute_count_limit": 1024,
+        "flywheel.schema.attribute_count": 30,
+        "flywheel.schema.node_count": 1,
+        "flywheel.self_check.issues": [],
+        "flywheel.self_check.ok": true,
+        "flywheel.version": "<version>"
+      },
+      "durationMs": 0,
+      "events": [],
+      "kind": "INTERNAL",
+      "name": "flywheel.startup",
+      "parent": null,
+      "path": "flywheel.startup",
+      "scope": "flywheel",
+      "startMs": 0,
+      "status": {
+        "code": "UNSET"
+      },
+      "trace": "trace-1"
+    },
+    {
+      "attributes": {
+        "app.agent.planner.goal": "ab",
+        "app.agent.planner.goal.truncated": true,
+        "app.agent.planner.objective": "ab",
+        "app.agent.planner.objective.truncated": true,
+        "app.agent.planner.time_to_first_token_ms": 10,
+        "app.agent.planner.ttft_ms": 10
+      },
+      "durationMs": 0,
+      "events": [],
+      "kind": "INTERNAL",
+      "name": "before",
+      "parent": null,
+      "path": "before",
+      "scope": "conformance",
+      "startMs": 0,
+      "status": {
+        "code": "UNSET"
+      },
+      "trace": "trace-2"
+    },
+    {
+      "attributes": {
+        "app.agent.planner.time_to_first_token_ms": 15,
+        "app.agent.planner.ttft_ms": 15
+      },
+      "durationMs": 0,
+      "events": [],
+      "kind": "INTERNAL",
+      "name": "last-millisecond",
+      "parent": null,
+      "path": "last-millisecond",
+      "scope": "conformance",
+      "startMs": 999,
+      "status": {
+        "code": "UNSET"
+      },
+      "trace": "trace-3"
+    },
+    {
+      "attributes": {
+        "app.agent.planner.goal": "ab",
+        "app.agent.planner.goal.truncated": true,
+        "app.agent.planner.time_to_first_token_ms": 20
+      },
+      "durationMs": 0,
+      "events": [],
+      "kind": "INTERNAL",
+      "name": "on",
+      "parent": null,
+      "path": "on",
+      "scope": "conformance",
+      "startMs": 1000,
+      "status": {
+        "code": "UNSET"
+      },
+      "trace": "trace-4"
+    }
+  ]
+}

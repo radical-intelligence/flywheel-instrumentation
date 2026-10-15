@@ -1,0 +1,413 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/radical-intelligence/flywheel-instrumentation/conformance/scenario.schema.json",
+  "title": "Conformance scenario",
+  "description": "One scripted scenario. A runner runs the steps in order, in a new process, and writes the normalised output. conformance/AGENTS.md says what each step does.",
+  "type": "object",
+  "required": ["name", "description", "covers", "setup", "steps"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "name": { "type": "string", "pattern": "^[0-9]{2}-[a-z0-9-]+$", "description": "The file name without .json." },
+    "description": { "type": "string" },
+    "covers": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string" },
+      "description": "The documented behaviours the scenario checks, each with its practice number in AGENTS.md."
+    },
+    "notes": { "type": "string", "description": "What the scenario models in place of a library, for example a manual span in place of an AI SDK span." },
+    "setup": { "$ref": "#/$defs/setup" },
+    "steps": { "$ref": "#/$defs/steps" }
+  },
+  "$defs": {
+    "setup": {
+      "type": "object",
+      "required": ["clock", "tracerProvider", "loggerProvider", "attributeCountLimit", "sampler"],
+      "additionalProperties": false,
+      "properties": {
+        "clock": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z$",
+          "description": "The start of the scenario clock, UTC. The wall clock reads this time, and the monotonic clock reads zero, until an advanceClock step."
+        },
+        "tracerProvider": { "type": "boolean", "description": "Register an SDK tracer provider with an in-memory exporter that exports each span when it ends." },
+        "loggerProvider": { "type": "boolean", "description": "Register an SDK logger provider with an in-memory exporter that exports each record when it is emitted." },
+        "attributeCountLimit": { "type": "integer", "minimum": 1, "description": "The span attribute count limit of the tracer provider." },
+        "sampler": { "enum": ["always_on", "always_off"] },
+        "env": {
+          "type": "object",
+          "additionalProperties": { "type": "string" },
+          "description": "Environment variables of the process. The runner removes every other OTEL_* variable."
+        }
+      }
+    },
+    "steps": { "type": "array", "items": { "$ref": "#/$defs/step" } },
+    "value": {
+      "description": "Any JSON value. Two objects are special: {\"$repeat\": {\"text\", \"count\"}} is text repeated count times, and {\"$number\": \"NaN\" | \"Infinity\" | \"-Infinity\"} is that number."
+    },
+    "repeat": {
+      "type": "object",
+      "required": ["$repeat"],
+      "additionalProperties": false,
+      "properties": {
+        "$repeat": {
+          "type": "object",
+          "required": ["text", "count"],
+          "additionalProperties": false,
+          "properties": { "text": { "type": "string" }, "count": { "type": "integer", "minimum": 0 } }
+        }
+      }
+    },
+    "number": {
+      "type": "object",
+      "required": ["$number"],
+      "additionalProperties": false,
+      "properties": { "$number": { "enum": ["NaN", "Infinity", "-Infinity"] } }
+    },
+    "attributes": { "type": "object", "additionalProperties": { "$ref": "#/$defs/value" } },
+    "error": {
+      "type": "object",
+      "required": ["name", "message"],
+      "additionalProperties": false,
+      "properties": { "name": { "type": "string" }, "message": { "type": "string" } }
+    },
+    "id": { "type": "string", "minLength": 1 },
+    "step": {
+      "type": "object",
+      "required": ["op"],
+      "properties": { "op": { "type": "string" } },
+      "oneOf": [
+        { "$ref": "#/$defs/init" },
+        { "$ref": "#/$defs/span" },
+        { "$ref": "#/$defs/turn" },
+        { "$ref": "#/$defs/handle" },
+        { "$ref": "#/$defs/set" },
+        { "$ref": "#/$defs/user" },
+        { "$ref": "#/$defs/session" },
+        { "$ref": "#/$defs/getTraceId" },
+        { "$ref": "#/$defs/turnRef" },
+        { "$ref": "#/$defs/feedback" },
+        { "$ref": "#/$defs/metadata" },
+        { "$ref": "#/$defs/selfCheck" },
+        { "$ref": "#/$defs/manifest" },
+        { "$ref": "#/$defs/registerAttributes" },
+        { "$ref": "#/$defs/flush" },
+        { "$ref": "#/$defs/advanceClock" },
+        { "$ref": "#/$defs/env" },
+        { "$ref": "#/$defs/withTimeline" },
+        { "$ref": "#/$defs/endRequest" },
+        { "$ref": "#/$defs/timed" },
+        { "$ref": "#/$defs/scope" },
+        { "$ref": "#/$defs/timelineSpan" },
+        { "$ref": "#/$defs/timelineClose" },
+        { "$ref": "#/$defs/annotate" },
+        { "$ref": "#/$defs/mark" },
+        { "$ref": "#/$defs/markLast" },
+        { "$ref": "#/$defs/timelineSet" },
+        { "$ref": "#/$defs/recordUsage" },
+        { "$ref": "#/$defs/timelineJSON" },
+        { "$ref": "#/$defs/setTimelineAttributes" }
+      ]
+    },
+    "init": {
+      "description": "Call init(options). The runner adds the rename clock (now) as the scenario wall clock. Result: console, and error when it throws.",
+      "type": "object",
+      "required": ["op"],
+      "additionalProperties": false,
+      "properties": {
+        "op": { "const": "init" },
+        "options": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "strict": { "type": "boolean" },
+            "azureCustomEvents": { "type": "boolean" },
+            "requireLoggerProvider": { "type": "boolean" },
+            "valueSizeLimit": { "type": "integer" },
+            "schemas": { "type": "object" }
+          }
+        }
+      }
+    },
+    "span": {
+      "description": "Start a span on the tracer named conformance, run the nested steps with it active, then end it. It stands in for a request span, a model call or a tool call.",
+      "type": "object",
+      "required": ["op", "name"],
+      "additionalProperties": false,
+      "properties": {
+        "op": { "const": "span" },
+        "name": { "type": "string" },
+        "kind": { "enum": ["INTERNAL", "SERVER", "CLIENT", "PRODUCER", "CONSUMER"] },
+        "attributes": { "$ref": "#/$defs/attributes" },
+        "steps": { "$ref": "#/$defs/steps" }
+      }
+    },
+    "turn": {
+      "description": "Call turn(options, fn). fn stores turn.ref under ref, runs the nested steps, writes record into turn.record (messages and guardrails are appended, other fields replaced), throws throw if given, and returns return. Result: ref, and returned or error.",
+      "type": "object",
+      "required": ["op", "options"],
+      "additionalProperties": false,
+      "properties": {
+        "op": { "const": "turn" },
+        "ref": { "$ref": "#/$defs/id" },
+        "options": {
+          "type": "object",
+          "required": ["agent"],
+          "additionalProperties": false,
+          "properties": {
+            "agent": { "type": "string" },
+            "conversationId": { "type": "string" },
+            "model": { "type": "string" },
+            "maxLength": { "type": "integer" },
+            "timeline": { "$ref": "#/$defs/id", "description": "The id of a timeline that a withTimeline step created." }
+          }
+        },
+        "steps": { "$ref": "#/$defs/steps" },
+        "record": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "query": { "$ref": "#/$defs/value" },
+            "answer": { "$ref": "#/$defs/value" },
+            "messages": { "type": "array" },
+            "toolCalled": { "$ref": "#/$defs/value" },
+            "model": { "$ref": "#/$defs/value" },
+            "outcome": { "$ref": "#/$defs/value" },
+            "guardrails": { "type": "array" },
+            "timings": { "$ref": "#/$defs/value" },
+            "usage": { "$ref": "#/$defs/value" },
+            "ms": { "$ref": "#/$defs/value" }
+          }
+        },
+        "throw": { "$ref": "#/$defs/error" },
+        "return": { "$ref": "#/$defs/value" }
+      }
+    },
+    "handle": {
+      "description": "Call tool(name, schema), model(name, schema) or agent(name, schema), then set(attributes) on the handle. With no schema, the handle has no schema.",
+      "type": "object",
+      "required": ["op", "type", "name", "attributes"],
+      "additionalProperties": false,
+      "properties": {
+        "op": { "const": "handle" },
+        "type": { "enum": ["tool", "model", "agent"] },
+        "name": { "type": "string" },
+        "schema": { "type": "object" },
+        "attributes": { "$ref": "#/$defs/attributes" }
+      }
+    },
+    "set": {
+      "description": "Call set(attributes).",
+      "type": "object",
+      "required": ["op", "attributes"],
+      "additionalProperties": false,
+      "properties": { "op": { "const": "set" }, "attributes": { "$ref": "#/$defs/attributes" } }
+    },
+    "user": {
+      "description": "Call user(id). The id can be any value, to test an invalid id.",
+      "type": "object",
+      "required": ["op", "id"],
+      "additionalProperties": false,
+      "properties": { "op": { "const": "user" }, "id": { "$ref": "#/$defs/value" } }
+    },
+    "session": {
+      "description": "Call session(id). The id can be any value, to test an invalid id.",
+      "type": "object",
+      "required": ["op", "id"],
+      "additionalProperties": false,
+      "properties": { "op": { "const": "session" }, "id": { "$ref": "#/$defs/value" } }
+    },
+    "getTraceId": {
+      "description": "Call getTraceId(). Result: value.",
+      "type": "object",
+      "required": ["op"],
+      "additionalProperties": false,
+      "properties": { "op": { "const": "getTraceId" } }
+    },
+    "turnRef": {
+      "description": "Call turnRef(), and store the ref under ref when there is one. Result: ref.",
+      "type": "object",
+      "required": ["op"],
+      "additionalProperties": false,
+      "properties": { "op": { "const": "turnRef" }, "ref": { "$ref": "#/$defs/id" } }
+    },
+    "feedback": {
+      "description": "Call feedback(event). With turn, event.turn is the ref stored under that name, or absent when no ref is stored.",
+      "type": "object",
+      "required": ["op", "event"],
+      "additionalProperties": false,
+      "properties": {
+        "op": { "const": "feedback" },
+        "turn": { "$ref": "#/$defs/id" },
+        "event": { "type": "object", "required": ["kind"], "properties": { "kind": { "enum": ["rating", "decision", "edit", "dwell", "next_message"] } } }
+      }
+    },
+    "metadata": {
+      "description": "Call metadata(traceId, eventName, attributes). traceIdOf takes the trace ID of a stored ref.",
+      "type": "object",
+      "required": ["op", "eventName", "attributes"],
+      "additionalProperties": false,
+      "properties": {
+        "op": { "const": "metadata" },
+        "traceId": { "type": "string" },
+        "traceIdOf": { "$ref": "#/$defs/id" },
+        "eventName": { "type": "string" },
+        "attributes": { "$ref": "#/$defs/attributes" }
+      },
+      "oneOf": [{ "required": ["traceId"] }, { "required": ["traceIdOf"] }]
+    },
+    "selfCheck": {
+      "description": "Call selfCheck(). Result: value, the report.",
+      "type": "object",
+      "required": ["op"],
+      "additionalProperties": false,
+      "properties": { "op": { "const": "selfCheck" } }
+    },
+    "manifest": {
+      "description": "Call manifest(). Result: value, the manifest.",
+      "type": "object",
+      "required": ["op"],
+      "additionalProperties": false,
+      "properties": { "op": { "const": "manifest" } }
+    },
+    "registerAttributes": {
+      "description": "Call registerAttributes(source, attributes) from the manifest module.",
+      "type": "object",
+      "required": ["op", "source", "attributes"],
+      "additionalProperties": false,
+      "properties": { "op": { "const": "registerAttributes" }, "source": { "type": "string" }, "attributes": { "type": "object" } }
+    },
+    "flush": {
+      "description": "Call flush() and wait for it. Result: value, which is null.",
+      "type": "object",
+      "required": ["op"],
+      "additionalProperties": false,
+      "properties": { "op": { "const": "flush" } }
+    },
+    "advanceClock": {
+      "description": "Move the wall clock and the monotonic clock forward by ms.",
+      "type": "object",
+      "required": ["op", "ms"],
+      "additionalProperties": false,
+      "properties": { "op": { "const": "advanceClock" }, "ms": { "type": "number", "minimum": 0 } }
+    },
+    "env": {
+      "description": "Set each environment variable, or remove it when the value is null.",
+      "type": "object",
+      "required": ["op", "set"],
+      "additionalProperties": false,
+      "properties": {
+        "op": { "const": "env" },
+        "set": { "type": "object", "additionalProperties": { "type": ["string", "null"] } }
+      }
+    },
+    "withTimeline": {
+      "description": "Create a timeline on the default clock, store it under timeline, open its request span when request is true, and run the nested steps with it as the current timeline.",
+      "type": "object",
+      "required": ["op", "timeline"],
+      "additionalProperties": false,
+      "properties": {
+        "op": { "const": "withTimeline" },
+        "timeline": { "$ref": "#/$defs/id" },
+        "request": { "type": "boolean" },
+        "steps": { "$ref": "#/$defs/steps" }
+      }
+    },
+    "endRequest": {
+      "description": "Close the request span of the timeline.",
+      "type": "object",
+      "required": ["op", "timeline"],
+      "additionalProperties": false,
+      "properties": { "op": { "const": "endRequest" }, "timeline": { "$ref": "#/$defs/id" } }
+    },
+    "timed": {
+      "description": "Call timed(name, fn, attributes). fn runs the nested steps, then throws throw if given.",
+      "type": "object",
+      "required": ["op", "name"],
+      "additionalProperties": false,
+      "properties": {
+        "op": { "const": "timed" },
+        "name": { "type": "string" },
+        "attributes": { "$ref": "#/$defs/attributes" },
+        "steps": { "$ref": "#/$defs/steps" },
+        "throw": { "$ref": "#/$defs/error" }
+      }
+    },
+    "scope": {
+      "description": "Call timeline().scope(name, fn). fn runs the nested steps.",
+      "type": "object",
+      "required": ["op", "name"],
+      "additionalProperties": false,
+      "properties": { "op": { "const": "scope" }, "name": { "type": "string" }, "steps": { "$ref": "#/$defs/steps" } }
+    },
+    "timelineSpan": {
+      "description": "Call timeline().span(name, attributes), and store the function that closes it under handle.",
+      "type": "object",
+      "required": ["op", "name", "handle"],
+      "additionalProperties": false,
+      "properties": {
+        "op": { "const": "timelineSpan" },
+        "name": { "type": "string" },
+        "handle": { "$ref": "#/$defs/id" },
+        "attributes": { "$ref": "#/$defs/attributes" }
+      }
+    },
+    "timelineClose": {
+      "description": "Call the close function stored under handle, with attributes.",
+      "type": "object",
+      "required": ["op", "handle"],
+      "additionalProperties": false,
+      "properties": { "op": { "const": "timelineClose" }, "handle": { "$ref": "#/$defs/id" }, "attributes": { "$ref": "#/$defs/attributes" } }
+    },
+    "annotate": {
+      "description": "Call timeline().annotate(attributes).",
+      "type": "object",
+      "required": ["op", "attributes"],
+      "additionalProperties": false,
+      "properties": { "op": { "const": "annotate" }, "attributes": { "$ref": "#/$defs/attributes" } }
+    },
+    "mark": {
+      "description": "Call timeline().mark(name).",
+      "type": "object",
+      "required": ["op", "name"],
+      "additionalProperties": false,
+      "properties": { "op": { "const": "mark" }, "name": { "type": "string" } }
+    },
+    "markLast": {
+      "description": "Call timeline().markLast(name).",
+      "type": "object",
+      "required": ["op", "name"],
+      "additionalProperties": false,
+      "properties": { "op": { "const": "markLast" }, "name": { "type": "string" } }
+    },
+    "timelineSet": {
+      "description": "Call timeline().set(name, value).",
+      "type": "object",
+      "required": ["op", "name", "value"],
+      "additionalProperties": false,
+      "properties": { "op": { "const": "timelineSet" }, "name": { "type": "string" }, "value": { "$ref": "#/$defs/value" } }
+    },
+    "recordUsage": {
+      "description": "Call recordUsage(timeline(), usage, marks), where marks are the marks of the stored timeline at this step.",
+      "type": "object",
+      "required": ["op", "timeline", "usage"],
+      "additionalProperties": false,
+      "properties": { "op": { "const": "recordUsage" }, "timeline": { "$ref": "#/$defs/id" }, "usage": { "type": "object" } }
+    },
+    "timelineJSON": {
+      "description": "Read the payload of the stored timeline (toJSON()). Result: value.",
+      "type": "object",
+      "required": ["op", "timeline"],
+      "additionalProperties": false,
+      "properties": { "op": { "const": "timelineJSON" }, "timeline": { "$ref": "#/$defs/id" } }
+    },
+    "setTimelineAttributes": {
+      "description": "Call set(timelineAttributes(payload)) with the payload of the stored timeline. Result: value, the attributes.",
+      "type": "object",
+      "required": ["op", "timeline"],
+      "additionalProperties": false,
+      "properties": { "op": { "const": "setTimelineAttributes" }, "timeline": { "$ref": "#/$defs/id" } }
+    }
+  }
+}

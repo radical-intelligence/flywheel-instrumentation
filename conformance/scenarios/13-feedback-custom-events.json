@@ -1,0 +1,36 @@
+{
+  "$schema": "../scenario.schema.json",
+  "name": "13-feedback-custom-events",
+  "description": "With azureCustomEvents, feedback() also emits a log record named by microsoft.custom_event.name, in the feedback span. metadata(), deprecated, emits one log record in the given trace.",
+  "covers": [
+    "practice 6: with azureCustomEvents, feedback also emits an INFO log record on the flywheel logger, with the span attributes and microsoft.custom_event.name, in the feedback span, at the at time",
+    "practice 6: metadata emits one INFO log record on the flywheel logger, named by microsoft.custom_event.name",
+    "practice 6: metadata puts the record in the given trace, with the first 16 hex digits of the trace ID as its span ID",
+    "practice 6: metadata uses the given trace ID, not the active span",
+    "practice 6: metadata with a trace ID that is not 32 hex digits keeps the attributes and drops the trace",
+    "practice 6: an attribute named microsoft.custom_event.name replaces the metadata event name"
+  ],
+  "setup": {
+    "clock": "2026-10-01T00:00:00.000Z",
+    "tracerProvider": true,
+    "loggerProvider": true,
+    "attributeCountLimit": 1024,
+    "sampler": "always_on"
+  },
+  "steps": [
+    { "op": "init", "options": { "azureCustomEvents": true } },
+    { "op": "turn", "ref": "turn", "options": { "agent": "example-agent" }, "steps": [{ "op": "advanceClock", "ms": 100 }] },
+    { "op": "advanceClock", "ms": 50 },
+    { "op": "feedback", "turn": "turn", "event": { "kind": "rating", "name": "user_feedback", "session": "s1", "rating": "down", "comment": "wrong" } },
+    { "op": "feedback", "event": { "kind": "dwell", "session": "s2", "element": "sources", "dwellMs": 1500, "at": "2026-10-01T00:00:02.000Z" } },
+    {
+      "op": "span",
+      "name": "request",
+      "steps": [
+        { "op": "metadata", "traceIdOf": "turn", "eventName": "user_feedback", "attributes": { "rating": "up", "score": 1 } },
+        { "op": "metadata", "traceId": "0af7651916cd43dd8448eb211c80319c", "eventName": "tester_feedback", "attributes": { "microsoft.custom_event.name": "renamed", "rating": "up" } }
+      ]
+    },
+    { "op": "metadata", "traceId": "nope", "eventName": "user_feedback", "attributes": { "rating": "up" } }
+  ]
+}

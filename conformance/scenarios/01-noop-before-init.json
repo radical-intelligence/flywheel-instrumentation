@@ -1,0 +1,65 @@
+{
+  "$schema": "../scenario.schema.json",
+  "name": "01-noop-before-init",
+  "description": "Before init(), flywheel() returns the noop instance. It writes nothing, even inside an active span, and keeps the request clock.",
+  "covers": [
+    "setup: before init(), flywheel() returns a noop instance that writes nothing",
+    "practice 1: the noop instance runs the turn and returns its result, turn.ref is undefined, and it writes nothing",
+    "practice 2: the noop instance keeps the clock, and writes no attributes",
+    "practice 3: the noop instance accepts a schema, user() and session(), and writes nothing",
+    "practice 4: the noop instance selfCheck() fails with not_initialised and emits no span",
+    "practice 4: flush() resolves to undefined",
+    "practice 5: the noop instance manifest() lists no names",
+    "practice 6: the noop instance drops feedback and metadata, and its turnRef() is undefined"
+  ],
+  "setup": {
+    "clock": "2026-10-01T00:00:00.000Z",
+    "tracerProvider": true,
+    "loggerProvider": true,
+    "attributeCountLimit": 1024,
+    "sampler": "always_on"
+  },
+  "steps": [
+    { "op": "selfCheck" },
+    { "op": "manifest" },
+    { "op": "flush" },
+    {
+      "op": "span",
+      "name": "request",
+      "kind": "SERVER",
+      "steps": [
+        { "op": "getTraceId" },
+        { "op": "turnRef" },
+        { "op": "set", "attributes": { "app.request.route": "/chat" } },
+        { "op": "handle", "type": "tool", "name": "search", "attributes": { "status": "ok" } },
+        {
+          "op": "handle",
+          "type": "tool",
+          "name": "lookup",
+          "schema": { "attributes": { "status": { "type": "enum", "values": ["ok", "empty"] } } },
+          "attributes": { "status": "ok", "undeclared": 1 }
+        },
+        { "op": "user", "id": "user-1" },
+        { "op": "session", "id": "session-1" },
+        {
+          "op": "turn",
+          "ref": "noop-turn",
+          "options": { "agent": "example-agent", "conversationId": "conv-1" },
+          "record": { "query": "q", "answer": "a" },
+          "return": 42
+        },
+        { "op": "feedback", "turn": "noop-turn", "event": { "kind": "rating", "name": "user_feedback", "session": "s1", "rating": "up" } },
+        { "op": "metadata", "traceId": "0af7651916cd43dd8448eb211c80319c", "eventName": "user_feedback", "attributes": { "rating": "up" } },
+        {
+          "op": "withTimeline",
+          "timeline": "request",
+          "steps": [
+            { "op": "timed", "name": "search", "steps": [{ "op": "advanceClock", "ms": 10 }] },
+            { "op": "setTimelineAttributes", "timeline": "request" }
+          ]
+        },
+        { "op": "timelineJSON", "timeline": "request" }
+      ]
+    }
+  ]
+}

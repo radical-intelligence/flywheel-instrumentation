@@ -1,0 +1,48 @@
+{
+  "$schema": "../scenario.schema.json",
+  "name": "08-turn-truncation",
+  "description": "turn() cuts each string and each message content at maxLength, default 1024, and sets <key>.truncated. Tool call inputs are not cut, and app.turn.messages stays valid JSON.",
+  "covers": [
+    "practice 1: each string is cut at options.maxLength and sets <key>.truncated, and a string within the limit has no flag",
+    "practice 1: each message content is cut on its own, a cut sets app.turn.messages.truncated, and tool call inputs are not cut",
+    "practice 1: the default length limit is 1024",
+    "practice 1: guardrails write app.turn.guardrail.<name>.passed and .reason",
+    "practice 1: app.turn.messages keeps the role, content, toolCalls, toolName and toolCallId of each message"
+  ],
+  "setup": {
+    "clock": "2026-10-01T00:00:00.000Z",
+    "tracerProvider": true,
+    "loggerProvider": true,
+    "attributeCountLimit": 1024,
+    "sampler": "always_on"
+  },
+  "steps": [
+    { "op": "init" },
+    {
+      "op": "turn",
+      "options": { "agent": "short", "model": "gpt-4.1-mini", "maxLength": 5 },
+      "record": {
+        "query": "abcdefgh",
+        "answer": "abc",
+        "messages": [
+          { "role": "user", "content": "abcdefgh" },
+          { "role": "assistant", "content": "", "toolCalls": [{ "toolName": "search", "input": { "query": "a query longer than five" }, "toolCallId": "c1" }] },
+          { "role": "tool", "content": "3 chunks", "toolName": "search", "toolCallId": "c1" },
+          { "role": "assistant", "content": "abc" }
+        ],
+        "guardrails": [
+          { "name": "pii", "passed": true },
+          { "name": "scope", "passed": false, "reason": "out of scope" }
+        ]
+      }
+    },
+    {
+      "op": "turn",
+      "options": { "agent": "long" },
+      "record": {
+        "answer": { "$repeat": { "text": "a", "count": 1030 } },
+        "messages": [{ "role": "assistant", "content": { "$repeat": { "text": "b", "count": 1024 } } }]
+      }
+    }
+  ]
+}

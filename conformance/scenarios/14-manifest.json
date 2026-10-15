@@ -1,0 +1,58 @@
+{
+  "$schema": "../scenario.schema.json",
+  "name": "14-manifest",
+  "description": "manifest() lists every attribute name the product can write on a turn span, sorted by name: the schema names, the core names, the turn names and the registered names.",
+  "covers": [
+    "practice 5: manifest() lists each declared name with its type, the truncated flags of strings and string arrays, the maxLength of strings, the enum values, renames and the core names",
+    "practice 5: manifest() lists no legacy app.<name>.<key> or app.<key> names for node keys",
+    "practice 5: the turn names are registered under the source turn when the package loads",
+    "practice 5: registerAttributes() adds a module's names to every manifest, and a second call with the same source replaces them",
+    "practice 5: when two sources write one name, the first keeps it",
+    "practice 1 and 5: each turn() call registers the turn names again, so a caller that replaces the turn source gets them back",
+    "practice 4: the self-check counts every manifest name for the whole turn"
+  ],
+  "setup": {
+    "clock": "2026-10-01T00:00:00.000Z",
+    "tracerProvider": true,
+    "loggerProvider": true,
+    "attributeCountLimit": 1024,
+    "sampler": "always_on"
+  },
+  "steps": [
+    {
+      "op": "init",
+      "options": {
+        "schemas": {
+          "tool": {
+            "search": {
+              "attributes": {
+                "status": { "type": "enum", "values": ["ok", "error"] },
+                "query": { "type": "string", "maxLength": 64 },
+                "chapters": { "type": "string[]" },
+                "result_count": { "type": "count" },
+                "cached": { "type": "boolean" }
+              }
+            }
+          },
+          "model": { "analysis": { "attributes": { "ttft_ms": { "type": "number" } } } },
+          "agent": {
+            "planner": {
+              "maxLength": 32,
+              "attributes": { "goal": { "type": "string", "renamedFrom": { "from": "objective", "until": "2026-12-01" } } }
+            }
+          }
+        }
+      }
+    },
+    { "op": "manifest" },
+    { "op": "registerAttributes", "source": "contract.turn", "attributes": { "app.turn.status": { "type": "enum", "values": ["ok", "error"] } } },
+    { "op": "registerAttributes", "source": "duplicate", "attributes": { "session.id": { "type": "count" } } },
+    { "op": "manifest" },
+    { "op": "registerAttributes", "source": "contract.turn", "attributes": { "app.turn.phase": { "type": "string", "maxLength": 16 } } },
+    { "op": "registerAttributes", "source": "turn", "attributes": {} },
+    { "op": "manifest" },
+    { "op": "selfCheck" },
+    { "op": "turn", "options": { "agent": "example-agent" } },
+    { "op": "manifest" }
+  ]
+}

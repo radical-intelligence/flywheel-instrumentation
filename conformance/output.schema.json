@@ -1,0 +1,156 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/radical-intelligence/flywheel-instrumentation/conformance/output.schema.json",
+  "title": "Normalised scenario output",
+  "description": "What one scenario exported, after normalisation. The file is canonical JSON: object keys sorted by UTF-16 code unit, two-space indent, LF line ends, one LF at the end, numbers in the shortest form that reads back as the same double (as ECMAScript writes them, so 40 and not 40.0), and non-ASCII characters written as they are. A compliant port writes the same bytes as expected/<name>.json.",
+  "type": "object",
+  "required": ["scenario", "results", "spans", "logRecords"],
+  "additionalProperties": false,
+  "properties": {
+    "scenario": { "type": "string" },
+    "results": {
+      "type": "array",
+      "description": "One result for each step, in the order the steps end. A step with nested steps ends after them.",
+      "items": { "$ref": "#/$defs/result" }
+    },
+    "spans": {
+      "type": "array",
+      "description": "Every exported span, in the order the spans ended.",
+      "items": { "$ref": "#/$defs/span" }
+    },
+    "logRecords": {
+      "type": "array",
+      "description": "Every exported log record, in the order they were emitted.",
+      "items": { "$ref": "#/$defs/logRecord" }
+    }
+  },
+  "$defs": {
+    "traceLabel": {
+      "type": "string",
+      "pattern": "^(trace-[1-9][0-9]*|session-trace:.+)$",
+      "description": "A trace ID. The trace ID that feedback derives from a session s is session-trace:<s>, with <process-session> for the session the package chose. Each other distinct trace ID gets the next trace-<n> label at its first use. The order of use: the spans in output order (the trace, then the parent), then the log records (the trace, then the span), then the results."
+    },
+    "spanLabel": {
+      "type": "string",
+      "pattern": "^(span:.+|session-span:.+|prefix:trace-[1-9][0-9]*|external-[1-9][0-9]*)$",
+      "description": "A span ID. The ID of an exported span is span:<path>. The parent span ID that feedback derives from a session s is session-span:<s>. A span ID equal to the first 16 hex digits of a trace ID with the label trace-<n> is prefix:trace-<n>. Any other span ID (a remote parent, a span the sampler dropped) gets the next external-<n> label at its first use, in the order of traceLabel."
+    },
+    "path": {
+      "type": "string",
+      "description": "The names of the exported ancestors and the span, joined by ' > '. The chain stops at the first parent that was not exported. When earlier spans in output order have the same exported parent (or none) and the same name, the name gets ' #<n>', where n is one more than the number of those spans."
+    },
+    "ms": {
+      "type": "number",
+      "description": "Milliseconds from the start of the scenario clock, rounded to three decimal places."
+    },
+    "attributes": {
+      "type": "object",
+      "description": "Attribute values as exported, with these placeholders: flywheel.version is <version>; exception.stacktrace is <stacktrace>; a value equal to a session ID that the package chose for feedback with no session is <process-session>.",
+      "additionalProperties": {
+        "anyOf": [
+          { "type": ["string", "number", "boolean"] },
+          { "type": "array", "items": { "type": ["string", "number", "boolean"] } }
+        ]
+      }
+    },
+    "span": {
+      "type": "object",
+      "required": ["path", "name", "trace", "parent", "kind", "scope", "startMs", "durationMs", "status", "attributes", "events"],
+      "additionalProperties": false,
+      "properties": {
+        "path": { "$ref": "#/$defs/path" },
+        "name": { "type": "string" },
+        "trace": { "$ref": "#/$defs/traceLabel" },
+        "parent": { "anyOf": [{ "$ref": "#/$defs/spanLabel" }, { "type": "null" }] },
+        "kind": { "enum": ["INTERNAL", "SERVER", "CLIENT", "PRODUCER", "CONSUMER"] },
+        "scope": { "type": "string", "description": "The name of the tracer (instrumentation scope). The version is left out." },
+        "startMs": { "$ref": "#/$defs/ms" },
+        "durationMs": { "type": "number", "description": "End time less start time, in milliseconds, rounded to three decimal places." },
+        "status": {
+          "type": "object",
+          "required": ["code"],
+          "additionalProperties": false,
+          "properties": {
+            "code": { "enum": ["UNSET", "OK", "ERROR"] },
+            "message": { "type": "string", "description": "Present for ERROR only." }
+          }
+        },
+        "attributes": { "$ref": "#/$defs/attributes" },
+        "events": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "timeMs", "attributes"],
+            "additionalProperties": false,
+            "properties": {
+              "name": { "type": "string" },
+              "timeMs": { "$ref": "#/$defs/ms" },
+              "attributes": { "$ref": "#/$defs/attributes" }
+            }
+          }
+        }
+      }
+    },
+    "logRecord": {
+      "type": "object",
+      "required": ["scope", "severityNumber", "severityText", "body", "trace", "span", "timeMs", "attributes"],
+      "additionalProperties": false,
+      "properties": {
+        "scope": { "type": "string" },
+        "severityNumber": { "type": ["integer", "null"] },
+        "severityText": { "type": ["string", "null"] },
+        "body": { "description": "The body, or null when it has none." },
+        "trace": { "anyOf": [{ "$ref": "#/$defs/traceLabel" }, { "type": "null" }], "description": "null when the record has no valid span context." },
+        "span": { "anyOf": [{ "$ref": "#/$defs/spanLabel" }, { "type": "null" }] },
+        "timeMs": { "$ref": "#/$defs/ms" },
+        "attributes": { "$ref": "#/$defs/attributes" }
+      }
+    },
+    "ref": {
+      "anyOf": [
+        {
+          "type": "object",
+          "required": ["traceId", "spanId"],
+          "additionalProperties": false,
+          "properties": { "traceId": { "$ref": "#/$defs/traceLabel" }, "spanId": { "$ref": "#/$defs/spanLabel" } }
+        },
+        { "type": "null" }
+      ]
+    },
+    "error": {
+      "type": "object",
+      "required": ["name", "message"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "description": "TypeError for an invalid write in strict mode. For an error that a scenario throws, the name it gives. Else Error." },
+        "message": { "type": "string" }
+      }
+    },
+    "result": {
+      "type": "object",
+      "required": ["step", "op"],
+      "additionalProperties": false,
+      "description": "What one step returned. A field that a step does not set is absent. An absent return value (undefined, None) is null.",
+      "properties": {
+        "step": { "type": "string", "pattern": "^[0-9]+(\\.[0-9]+)*$", "description": "The index of the step, and of each step that holds it, joined by dots: 3.1 is the second nested step of the fourth step." },
+        "op": { "type": "string" },
+        "error": { "$ref": "#/$defs/error", "description": "The error the step threw or rejected with." },
+        "console": {
+          "type": "array",
+          "description": "init only: each line written to the error stream (error) or the warning stream (warn), in order.",
+          "items": {
+            "type": "object",
+            "required": ["level", "text"],
+            "additionalProperties": false,
+            "properties": { "level": { "enum": ["error", "warn"] }, "text": { "type": "string" } }
+          }
+        },
+        "ref": { "$ref": "#/$defs/ref", "description": "turn: turn.ref. turnRef: the ref it returned." },
+        "returned": { "description": "turn: the value turn() resolved to." },
+        "value": {
+          "description": "getTraceId: a traceLabel or null. selfCheck: the report, with startupSpan.traceId as a traceLabel and startupSpan null when absent. manifest: the manifest, with package.name <package> and package.version <version>. flush: null. timelineJSON: the payload. setTimelineAttributes: the attributes."
+        }
+      }
+    }
+  }
+}

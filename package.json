@@ -39,7 +39,9 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.test.json",
-    "test": "node --import tsx --test test/contract.test.ts test/example.test.ts && node --import tsx --test test/backends.test.ts",
+    "test": "node --import tsx --test test/contract.test.ts test/example.test.ts && node --import tsx --test test/backends.test.ts && npm run conformance",
+    "conformance": "node --import tsx conformance/runner.ts",
+    "conformance:update": "node --import tsx conformance/runner.ts --update",
     "prepare": "npm run build",
     "example": "node --import tsx examples/agent/main.ts",
     "example:manifest": "node --import tsx dist/cli.js examples/agent/schemas.ts --out examples/agent/instrumentation-manifest.json",
@@ -78,6 +80,7 @@
     "@types/express": "5.0.6",
     "@types/node": "25.9.5",
     "ai": "5.0.269",
+    "ajv": "8.18.0",
     "express": "5.2.1",
     "tsx": "4.23.12",
     "typescript": "6.0.3",

@@ -1,0 +1,287 @@
+{
+  "logRecords": [],
+  "results": [
+    {
+      "console": [
+        {
+          "level": "warn",
+          "text": "flywheel self-check: attribute_count_limit: node agent.wide declares 21 attribute names, over the span attribute count limit of 20"
+        },
+        {
+          "level": "warn",
+          "text": "flywheel self-check: attribute_count_limit: one turn can write 50 attribute names, over the span attribute count limit of 20"
+        },
+        {
+          "level": "warn",
+          "text": "flywheel self-check: value_size_limit: app.model.analysis.answer has maxLength 10000, over the exporter value size limit of 8192 bytes"
+        }
+      ],
+      "op": "init",
+      "step": "0"
+    },
+    {
+      "console": [
+        {
+          "level": "warn",
+          "text": "flywheel self-check: attribute_count_limit: one turn can write 28 attribute names, over the span attribute count limit of 20"
+        },
+        {
+          "level": "warn",
+          "text": "flywheel self-check: value_size_limit: app.model.analysis.answer has maxLength 10000, over the exporter value size limit of 1000 bytes"
+        },
+        {
+          "level": "warn",
+          "text": "flywheel self-check: value_size_limit: app.model.analysis.note has maxLength 1024, over the exporter value size limit of 1000 bytes"
+        }
+      ],
+      "op": "init",
+      "step": "1"
+    },
+    {
+      "op": "selfCheck",
+      "step": "2",
+      "value": {
+        "attributeCountLimit": {
+          "source": "sdk",
+          "value": 20
+        },
+        "attributeCounts": {
+          "nodes": {
+            "model.analysis": 4
+          },
+          "turn": 28
+        },
+        "issues": [
+          {
+            "code": "attribute_count_limit",
+            "level": "warning",
+            "message": "one turn can write 28 attribute names, over the span attribute count limit of 20"
+          },
+          {
+            "code": "value_size_limit",
+            "level": "warning",
+            "message": "app.model.analysis.answer has maxLength 10000, over the exporter value size limit of 1000 bytes"
+          },
+          {
+            "code": "value_size_limit",
+            "level": "warning",
+            "message": "app.model.analysis.note has maxLength 1024, over the exporter value size limit of 1000 bytes"
+          }
+        ],
+        "loggerProvider": false,
+        "ok": true,
+        "startupSpan": {
+          "sampled": true,
+          "traceId": "trace-2"
+        },
+        "tracerProvider": true,
+        "valueSizeLimit": 1000
+      }
+    },
+    {
+      "console": [
+        {
+          "level": "error",
+          "text": "flywheel self-check: no_logger_provider: no logger provider is registered, so log records are dropped"
+        },
+        {
+          "level": "warn",
+          "text": "flywheel self-check: attribute_count_limit: one turn can write 24 attribute names, over the span attribute count limit of 20"
+        }
+      ],
+      "op": "init",
+      "step": "3"
+    },
+    {
+      "console": [
+        {
+          "level": "error",
+          "text": "flywheel self-check: no_logger_provider: no logger provider is registered, so log records are dropped"
+        },
+        {
+          "level": "warn",
+          "text": "flywheel self-check: attribute_count_limit: one turn can write 24 attribute names, over the span attribute count limit of 20"
+        }
+      ],
+      "op": "init",
+      "step": "4"
+    },
+    {
+      "op": "selfCheck",
+      "step": "5",
+      "value": {
+        "attributeCountLimit": {
+          "source": "sdk",
+          "value": 20
+        },
+        "attributeCounts": {
+          "nodes": {},
+          "turn": 24
+        },
+        "issues": [
+          {
+            "code": "no_logger_provider",
+            "level": "error",
+            "message": "no logger provider is registered, so log records are dropped"
+          },
+          {
+            "code": "attribute_count_limit",
+            "level": "warning",
+            "message": "one turn can write 24 attribute names, over the span attribute count limit of 20"
+          }
+        ],
+        "loggerProvider": false,
+        "ok": false,
+        "startupSpan": {
+          "sampled": true,
+          "traceId": "trace-3"
+        },
+        "tracerProvider": true,
+        "valueSizeLimit": 8192
+      }
+    },
+    {
+      "console": [
+        {
+          "level": "warn",
+          "text": "flywheel self-check: attribute_count_limit: one turn can write 24 attribute names, over the span attribute count limit of 20"
+        }
+      ],
+      "op": "init",
+      "step": "6"
+    },
+    {
+      "op": "selfCheck",
+      "step": "7",
+      "value": {
+        "attributeCountLimit": {
+          "source": "sdk",
+          "value": 20
+        },
+        "attributeCounts": {
+          "nodes": {},
+          "turn": 24
+        },
+        "issues": [
+          {
+            "code": "attribute_count_limit",
+            "level": "warning",
+            "message": "one turn can write 24 attribute names, over the span attribute count limit of 20"
+          }
+        ],
+        "loggerProvider": false,
+        "ok": true,
+        "startupSpan": {
+          "sampled": true,
+          "traceId": "trace-4"
+        },
+        "tracerProvider": true,
+        "valueSizeLimit": 8192
+      }
+    }
+  ],
+  "scenario": "04-self-check-limits",
+  "spans": [
+    {
+      "attributes": {
+        "flywheel.attribute_count_limit": 20,
+        "flywheel.schema.attribute_count": 50,
+        "flywheel.schema.node_count": 3,
+        "flywheel.self_check.issues": [
+          "attribute_count_limit",
+          "attribute_count_limit",
+          "value_size_limit"
+        ],
+        "flywheel.self_check.ok": true,
+        "flywheel.version": "<version>"
+      },
+      "durationMs": 0,
+      "events": [],
+      "kind": "INTERNAL",
+      "name": "flywheel.startup",
+      "parent": null,
+      "path": "flywheel.startup",
+      "scope": "flywheel",
+      "startMs": 0,
+      "status": {
+        "code": "UNSET"
+      },
+      "trace": "trace-1"
+    },
+    {
+      "attributes": {
+        "flywheel.attribute_count_limit": 20,
+        "flywheel.schema.attribute_count": 28,
+        "flywheel.schema.node_count": 1,
+        "flywheel.self_check.issues": [
+          "attribute_count_limit",
+          "value_size_limit",
+          "value_size_limit"
+        ],
+        "flywheel.self_check.ok": true,
+        "flywheel.version": "<version>"
+      },
+      "durationMs": 0,
+      "events": [],
+      "kind": "INTERNAL",
+      "name": "flywheel.startup",
+      "parent": null,
+      "path": "flywheel.startup #2",
+      "scope": "flywheel",
+      "startMs": 0,
+      "status": {
+        "code": "UNSET"
+      },
+      "trace": "trace-2"
+    },
+    {
+      "attributes": {
+        "flywheel.attribute_count_limit": 20,
+        "flywheel.schema.attribute_count": 24,
+        "flywheel.schema.node_count": 0,
+        "flywheel.self_check.issues": [
+          "no_logger_provider",
+          "attribute_count_limit"
+        ],
+        "flywheel.self_check.ok": false,
+        "flywheel.version": "<version>"
+      },
+      "durationMs": 0,
+      "events": [],
+      "kind": "INTERNAL",
+      "name": "flywheel.startup",
+      "parent": null,
+      "path": "flywheel.startup #3",
+      "scope": "flywheel",
+      "startMs": 0,
+      "status": {
+        "code": "UNSET"
+      },
+      "trace": "trace-3"
+    },
+    {
+      "attributes": {
+        "flywheel.attribute_count_limit": 20,
+        "flywheel.schema.attribute_count": 24,
+        "flywheel.schema.node_count": 0,
+        "flywheel.self_check.issues": [
+          "attribute_count_limit"
+        ],
+        "flywheel.self_check.ok": true,
+        "flywheel.version": "<version>"
+      },
+      "durationMs": 0,
+      "events": [],
+      "kind": "INTERNAL",
+      "name": "flywheel.startup",
+      "parent": null,
+      "path": "flywheel.startup #4",
+      "scope": "flywheel",
+      "startMs": 0,
+      "status": {
+        "code": "UNSET"
+      },
+      "trace": "trace-4"
+    }
+  ]
+}

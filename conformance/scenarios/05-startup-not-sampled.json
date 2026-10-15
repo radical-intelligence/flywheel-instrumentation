@@ -1,0 +1,19 @@
+{
+  "$schema": "../scenario.schema.json",
+  "name": "05-startup-not-sampled",
+  "description": "A sampler that drops the flywheel.startup span gives a warning, and the check stays ok.",
+  "covers": [
+    "practice 4: a sampler that drops the start-up span gives the warning startup_span_not_sampled"
+  ],
+  "setup": {
+    "clock": "2026-10-01T00:00:00.000Z",
+    "tracerProvider": true,
+    "loggerProvider": true,
+    "attributeCountLimit": 1024,
+    "sampler": "always_off"
+  },
+  "steps": [
+    { "op": "init" },
+    { "op": "selfCheck" }
+  ]
+}
